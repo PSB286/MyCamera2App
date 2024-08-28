@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <data>
+        <!-- 如果需要绑定变量或方法到视图，请在这里声明 -->
+    </data>
+
+    <!-- 布局内容 -->
+
+</layout>
