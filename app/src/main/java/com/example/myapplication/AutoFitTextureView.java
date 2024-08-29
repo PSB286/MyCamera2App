@@ -14,6 +14,7 @@ public class AutoFitTextureView extends TextureView
     {
         super(context, attrs);
     }
+
     /**
      * 设置视图的宽高比例
      *
