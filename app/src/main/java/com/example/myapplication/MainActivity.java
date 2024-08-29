@@ -21,7 +21,6 @@ import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
 import android.os.Bundle;
-//import android.support.annotation.NonNull;
 import android.util.Size;
 import android.util.SparseIntArray;
 import android.view.Surface;
@@ -77,6 +76,7 @@ public class MainActivity extends Activity
     // 定义CameraCaptureSession成员变量
     private CameraCaptureSession captureSession;
     private ImageReader imageReader;
+
     private final TextureView.SurfaceTextureListener mSurfaceTextureListener
             = new TextureView.SurfaceTextureListener()
     {
@@ -106,6 +106,7 @@ public class MainActivity extends Activity
         {
         }
     };
+
     private final CameraDevice.StateCallback stateCallback = new CameraDevice.StateCallback()
     {
         //  摄像头被打开时激发该方法
@@ -134,6 +135,13 @@ public class MainActivity extends Activity
             MainActivity.this.finish();
         }
     };
+
+    /**
+     * 当活动被创建时，这个方法会被调用
+     * 该方法主要负责活动的初始化设置，包括加载布局、请求权限等
+     *
+     * @param savedInstanceState 如果活动之前被终止过，那么该Bundle对象中会包含活动之前保存的状态
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
@@ -142,7 +150,15 @@ public class MainActivity extends Activity
         rootLayout = findViewById(R.id.root);
         requestPermissions(new String[]{Manifest.permission.CAMERA}, 0x123);
     }
-
+    /**
+     * 请求权限结果回调方法
+     * 当活动请求用户授予权限时，此方法将被调用以通知请求结果
+     *
+     * @param requestCode 请求代码，用于标识请求权限的类型
+     * @param permissions 请求结果中权限的数组
+     * @param grantResults 对应于每个权限的授予权限结果数组，元素为PackageManager.PERMISSION_GRANTED或PackageManager.PERMISSION_DENIED
+     *                     权限请求结果的数组元素数量与permissions参数数组元素数量相同，一一对应
+     */
     @Override
     public void onRequestPermissionsResult(int requestCode,
                                            @NonNull String[] permissions, @NonNull int[] grantResults)
@@ -158,6 +174,11 @@ public class MainActivity extends Activity
         }
     }
 
+
+    /**
+     * 捕获静态图片的方法
+     * 该方法用于捕获静态图片，设置相机参数以确保拍摄出清晰的照片，并在拍摄完成后处理后续的显示和界面更新
+     */
     private void captureStillPicture()
     {
         try {
@@ -257,6 +278,12 @@ public class MainActivity extends Activity
             e.printStackTrace();
         }
     }
+
+    /**
+     * 创建相机预览会话
+     * 这个方法设置相机预览的SurfaceTexture，创建用于预览的CaptureRequest.Builder，
+     * 并通过CameraCaptureSession管理预览和捕获请求
+     */
     private void createCameraPreviewSession()
     {
         try
@@ -312,6 +339,12 @@ public class MainActivity extends Activity
             e.printStackTrace();
         }
     }
+
+    /**
+     * 设置摄像头的输出参数，包括照片尺寸和预览尺寸
+     * @param width 预览画面的宽度
+     * @param height 预览画面的高度
+     */
     private void setUpCameraOutputs(int width, int height)
     {
         CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
@@ -373,6 +406,17 @@ public class MainActivity extends Activity
             System.out.println("出现错误。");
         }
     }
+
+    /**
+     * 选择最合适的预览尺寸
+     * 从摄像头支持的分辨率列表中选择一个最合适的预览尺寸，确保选择的尺寸满足指定的宽高和宽高比要求
+     *
+     * @param choices 摄像头支持的分辨率列表
+     * @param width 预览Surface的宽度
+     * @param height 预览Surface的高度
+     * @param aspectRatio 期望的宽高比
+     * @return 返回最合适的预览尺寸如果找不到合适的尺寸，返回摄像头支持的第一个分辨率
+     */
     private static Size chooseOptimalSize(Size[] choices
             , int width, int height, Size aspectRatio)
     {

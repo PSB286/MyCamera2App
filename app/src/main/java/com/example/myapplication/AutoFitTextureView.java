@@ -4,17 +4,7 @@ import android.content.Context;
 import android.util.AttributeSet;
 import android.view.TextureView;
 
-/**
- * Description:<br>
- * 网站: <a href="http://www.crazyit.org">疯狂Java联盟</a><br>
- * Copyright (C), 2001-2020, Yeeku.H.Lee<br>
- * This program is protected by copyright laws.<br>
- * Program Name:<br>
- * Date:<br>
- *
- * @author Yeeku.H.Lee kongyeeku@163.com<br>
- * @version 1.0
- */
+//继承TextureView类，实现自动调整TextureView尺寸以适应预览尺寸
 public class AutoFitTextureView extends TextureView
 {
     private int mRatioWidth = 0;
@@ -24,7 +14,12 @@ public class AutoFitTextureView extends TextureView
     {
         super(context, attrs);
     }
-
+    /**
+     * 设置视图的宽高比例
+     *
+     * @param width 视图宽度
+     * @param height 视图高度
+     */
     void setAspectRatio(int width, int height)
     {
         mRatioWidth = width;
@@ -32,6 +27,13 @@ public class AutoFitTextureView extends TextureView
         requestLayout();
     }
 
+    /**
+     * 重写onMeasure方法以计算视图的尺寸
+     * 此方法考虑了视图的宽高比限制，以确保视图在不同屏幕尺寸下能够保持比例显示
+     *
+     * @param widthMeasureSpec 用于指定视图宽度的测量规格
+     * @param heightMeasureSpec 用于指定视图高度的测量规格
+     */
     @Override
     public void onMeasure(int widthMeasureSpec, int heightMeasureSpec)
     {
