@@ -3,6 +3,7 @@ package com.example.myapplication;
 import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.ImageFormat;
@@ -20,7 +21,11 @@ import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
+import android.media.MediaScannerConnection;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.util.Size;
 import android.util.SparseIntArray;
 import android.view.Surface;
@@ -33,11 +38,14 @@ import androidx.annotation.NonNull;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.nio.ByteBuffer;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
+import java.util.Random;
 
 /**
  * Description:<br>
@@ -347,6 +355,21 @@ public class MainActivity extends Activity
      */
     private void setUpCameraOutputs(int width, int height)
     {
+        // 获取当前时间戳
+        long currentTimeMillis = System.currentTimeMillis();
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss");
+        String formattedTime = sdf.format(new Date(currentTimeMillis));
+
+        // 生成随机字符串
+        Random random = new Random();
+        StringBuilder randomString = new StringBuilder();
+        for (int i = 0; i < 6; i++) {
+            randomString.append(random.nextInt(10)); // 生成6位数字
+        }
+
+        // 组合图片名称
+        String fileName = "IMG_"+formattedTime + "_" + randomString.toString() + ".jpg";
+
         CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
         try {
             // 获取指定摄像头的特性
@@ -368,7 +391,7 @@ public class MainActivity extends Activity
                 ByteBuffer buffer = image.getPlanes()[0].getBuffer();
                 byte[] bytes = new byte[buffer.remaining()];
                 // 使用IO流将照片写入指定文件
-                File file = new File(getExternalFilesDir(null), "pic.jpg");
+                File file = new File("/storage/emulated/0/DCIM/Camera", fileName);
                 buffer.get(bytes);
                 try (
                         FileOutputStream output = new FileOutputStream(file))
@@ -384,8 +407,11 @@ public class MainActivity extends Activity
                 finally
                 {
                     image.close();
+                    // 发送广播通知图库扫描图片
+                    sendBroadcastToMediaScanner(MainActivity.this, file);
                 }
             },null);
+
             // 获取最佳的预览尺寸
             previewSize = chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class),
                     width, height, largest);
@@ -404,6 +430,22 @@ public class MainActivity extends Activity
         catch (NullPointerException e)
         {
             System.out.println("出现错误。");
+        }
+    }
+
+    private void sendBroadcastToMediaScanner(MainActivity mainActivity, File file) {
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            MediaScannerConnection.scanFile(this, new String[]{file.getAbsolutePath()}, null, new MediaScannerConnection.OnScanCompletedListener() {
+                public void onScanCompleted(String path, Uri uri) {
+                    Log.i("ExternalStorage", "Scanned " + path + ":");
+                    Log.i("ExternalStorage", "-> uri=" + uri);
+                }
+            });
+        } else {
+            Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+            mediaScanIntent.setData(Uri.fromFile(file));
+            this.sendBroadcast(mediaScanIntent);
         }
     }
 
