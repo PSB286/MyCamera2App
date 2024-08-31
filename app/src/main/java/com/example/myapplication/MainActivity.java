@@ -1,15 +1,22 @@
 package com.example.myapplication;
 
 import android.Manifest;
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.ObjectAnimator;
+import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
+import android.graphics.Color;
 import android.graphics.ImageFormat;
 import android.graphics.Matrix;
+import android.graphics.Outline;
 import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
+import android.graphics.drawable.Drawable;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraCharacteristics;
@@ -25,15 +32,20 @@ import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
 import android.util.Size;
 import android.util.SparseIntArray;
 import android.view.Surface;
 import android.view.TextureView;
+import android.view.View;
+import android.view.ViewGroup;
 import android.widget.FrameLayout;
+import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.core.app.ActivityCompat;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -58,8 +70,7 @@ import java.util.Random;
  * @author Yeeku.H.Lee kongyeeku@163.com<br>
  * @version 1.0
  */
-public class MainActivity extends Activity
-{
+public class MainActivity extends Activity {
     private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
 
     static {
@@ -68,6 +79,7 @@ public class MainActivity extends Activity
         ORIENTATIONS.append(Surface.ROTATION_180, 270);
         ORIENTATIONS.append(Surface.ROTATION_270, 180);
     }
+
     // 定义界面上根布局管理器
     private FrameLayout rootLayout;
     // 定义自定义的AutoFitTextureView组件,用于预览摄像头照片
@@ -84,43 +96,38 @@ public class MainActivity extends Activity
     // 定义CameraCaptureSession成员变量
     private CameraCaptureSession captureSession;
     private ImageReader imageReader;
+    private int maskViewflg=0;
+
 
     private final TextureView.SurfaceTextureListener mSurfaceTextureListener
-            = new TextureView.SurfaceTextureListener()
-    {
+            = new TextureView.SurfaceTextureListener() {
         @Override
         public void onSurfaceTextureAvailable(SurfaceTexture texture
-                , int width, int height)
-        {
+                , int width, int height) {
             // 当TextureView可用时，打开摄像头
             openCamera(width, height);
         }
 
         @Override
         public void onSurfaceTextureSizeChanged(SurfaceTexture texture
-                , int width, int height)
-        {
+                , int width, int height) {
             configureTransform(width, height);
         }
 
         @Override
-        public boolean onSurfaceTextureDestroyed(SurfaceTexture texture)
-        {
+        public boolean onSurfaceTextureDestroyed(SurfaceTexture texture) {
             return true;
         }
 
         @Override
-        public void onSurfaceTextureUpdated(SurfaceTexture texture)
-        {
+        public void onSurfaceTextureUpdated(SurfaceTexture texture) {
         }
     };
 
-    private final CameraDevice.StateCallback stateCallback = new CameraDevice.StateCallback()
-    {
+    private final CameraDevice.StateCallback stateCallback = new CameraDevice.StateCallback() {
         //  摄像头被打开时激发该方法
         @Override
-        public void onOpened(@NonNull CameraDevice cameraDevice)
-        {
+        public void onOpened(@NonNull CameraDevice cameraDevice) {
             MainActivity.this.cameraDevice = cameraDevice;
             // 开始预览
             createCameraPreviewSession();  // ②
@@ -128,16 +135,14 @@ public class MainActivity extends Activity
 
         // 摄像头断开连接时激发该方法
         @Override
-        public void onDisconnected(CameraDevice cameraDevice)
-        {
+        public void onDisconnected(CameraDevice cameraDevice) {
             cameraDevice.close();
             MainActivity.this.cameraDevice = null;
         }
 
         // 打开摄像头出现错误时激发该方法
         @Override
-        public void onError(CameraDevice cameraDevice, int error)
-        {
+        public void onError(CameraDevice cameraDevice, int error) {
             cameraDevice.close();
             MainActivity.this.cameraDevice = null;
             MainActivity.this.finish();
@@ -151,13 +156,14 @@ public class MainActivity extends Activity
      * @param savedInstanceState 如果活动之前被终止过，那么该Bundle对象中会包含活动之前保存的状态
      */
     @Override
-    protected void onCreate(Bundle savedInstanceState)
-    {
+    protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         rootLayout = findViewById(R.id.root);
+
         requestPermissions(new String[]{Manifest.permission.CAMERA}, 0x123);
     }
+
     /**
      * 请求权限结果回调方法
      * 当活动请求用户授予权限时，此方法将被调用以通知请求结果
@@ -169,8 +175,7 @@ public class MainActivity extends Activity
      */
     @Override
     public void onRequestPermissionsResult(int requestCode,
-                                           @NonNull String[] permissions, @NonNull int[] grantResults)
-    {
+                                           @NonNull String[] permissions, @NonNull int[] grantResults) {
         if (requestCode == 0x123 && grantResults.length == 1
                 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             // 创建预览摄像头图片的TextureView组件
@@ -179,6 +184,102 @@ public class MainActivity extends Activity
             textureView.setSurfaceTextureListener(mSurfaceTextureListener);
             rootLayout.addView(textureView);
             findViewById(R.id.capture).setOnClickListener(view -> captureStillPicture());
+            findViewById(R.id.switch_camera).setOnClickListener(view -> {
+                switchCameraWithMaskAnimation();
+            });
+            //setUpCameraOutputs(width, height);
+        }
+    }
+
+    /**
+     * 关闭相机设备
+     * 此方法检查当前是否有相机设备处于打开状态，如果有，则关闭它并置空引用
+     * 这有助于资源管理，防止内存泄漏，确保相机设备在不再需要时被正确释放
+     */
+
+    private void closeCamera() {
+        if (cameraDevice != null) {
+            cameraDevice.close();
+            cameraDevice = null;
+        }
+    }
+
+    private void SwichCamera() {
+        // 切换摄像头
+        closeCamera();
+        mCameraId = "1".equals(mCameraId) ? "0" : "1";
+        openCamera(textureView.getWidth(), textureView.getHeight());
+    }
+
+    private void SwichCamera(View maskView ) {
+        // 切换摄像头
+        closeCamera();
+        mCameraId = "1".equals(mCameraId) ? "0" : "1";
+        openCamera(textureView.getWidth(), textureView.getHeight());
+
+        //开启一个新的线线程实现移除蒙版，并且延迟600毫秒，等待摄像头切换成功
+        // 创建 Handler
+        Handler handler = new Handler();
+        // 创建 Runnable
+        Runnable removeMaskRunnable = new Runnable() {
+            @Override
+            public void run() {
+                rootLayout.removeView(maskView); // 移除蒙版视图
+            }
+        };
+
+// 执行延迟任务
+        handler.postDelayed(removeMaskRunnable, 600); // 延迟 1000 毫秒（1 秒）
+    }
+
+
+
+    private void switchCameraWithMaskAnimation() {
+        if (cameraDevice != null) {
+            // 创建一个蒙版视图
+            View maskView = new View(this);
+            maskView.setBackgroundColor(Color.BLACK); // 设置背景色为黑色
+            maskView.setAlpha(0f); // 初始透明度为0
+
+            // 获取根布局
+            FrameLayout rootView = findViewById(R.id.root); // 假设root是你的主布局
+            int width =previewSize.getWidth();
+            int height =previewSize.getHeight();
+
+            // 设置蒙版视图的布局参数
+            FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                    width,
+                    height
+            );
+            rootView.addView(maskView, params);
+
+            // 添加动画效果
+            ValueAnimator animator = ValueAnimator.ofFloat(0f, 1f);
+            animator.setDuration(150); // 动画持续时间
+            animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                @Override
+                public void onAnimationUpdate(ValueAnimator animation) {
+                    float alpha = (float) animation.getAnimatedValue();
+                    maskView.setAlpha(alpha);
+                }
+            });
+            animator.start();
+            // 在动画结束后关闭相机
+            animator.addListener(new AnimatorListenerAdapter() {
+                @Override
+                public void onAnimationEnd(Animator animation) {
+                    maskViewflg = 1;
+                    SwichCamera(maskView);
+                   // Toast.makeText(MainActivity.this, "动画结束", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+    }
+
+    private void restoreCamera() {
+        if (cameraDevice == null && maskViewflg == 0) {
+            // 恢复之前的相机设备
+           openCamera(textureView.getWidth(), textureView.getHeight());
         }
     }
 
@@ -280,6 +381,8 @@ public class MainActivity extends Activity
             }
             // 打开摄像头
             manager.openCamera(mCameraId, stateCallback, null); // ①
+
+
         }
         catch (CameraAccessException e)
         {

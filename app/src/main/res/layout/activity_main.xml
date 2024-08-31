@@ -17,4 +17,12 @@
         android:layout_gravity="bottom|center"
         android:layout_marginBottom="64dp"
         android:src="@drawable/capture" />
+    <ImageButton
+        android:id="@+id/switch_camera"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center"
+        android:layout_marginBottom="64dp"
+        android:layout_marginLeft="100dp"
+        android:src="@drawable/switch_camera" />
 </FrameLayout>
