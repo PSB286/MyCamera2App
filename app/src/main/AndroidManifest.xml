@@ -6,9 +6,18 @@
         android:name="android.hardware.camera"
         android:required="false" />
 
-    <uses-permission android:name="android.permission.CAMERA" /> <!-- 授予该程序录制声音的权限 -->
-    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" /> <!-- 授予该程序使用外部存储器的权限 -->
+    <!-- 请求互联网权限，允许应用访问网络 -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 请求写入外部存储权限，允许应用在外部存储上写入文件 -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <!--请求读取外部存储权限，允许应用从外部存储读取文件-->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <!--请求录音权限，允许应用进行音频录制-->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!--请求摄像头权限，允许应用使用相机-->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!--请求修改音频设置权限，允许应用更改系统音频设置-->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
     <application
         android:allowBackup="true"
@@ -17,9 +26,6 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity
-            android:name=".RecordVideo"
-            android:exported="true" />
         <activity
             android:name=".MainActivity"
             android:exported="true">

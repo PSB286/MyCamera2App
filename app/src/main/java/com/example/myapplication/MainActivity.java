@@ -28,19 +28,24 @@ import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
+import android.media.MediaRecorder;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.util.Log;
 import android.util.Size;
 import android.util.SparseIntArray;
 import android.view.Surface;
+import android.view.SurfaceView;
 import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
@@ -49,6 +54,7 @@ import androidx.core.app.ActivityCompat;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -59,17 +65,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Random;
 
-/**
- * Description:<br>
- * 网站: <a href="http://www.crazyit.org">疯狂Java联盟</a><br>
- * Copyright (C), 2001-2020, Yeeku.H.Lee<br>
- * This program is protected by copyright laws.<br>
- * Program Name:<br>
- * Date:<br>
- *
- * @author Yeeku.H.Lee kongyeeku@163.com<br>
- * @version 1.0
- */
 public class MainActivity extends Activity {
     private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
 
@@ -98,6 +93,26 @@ public class MainActivity extends Activity {
     private ImageReader imageReader;
     private int maskViewflg=0;
 
+    //////////////////////////
+    private ImageButton recordBn;
+    private ImageButton stopBn;
+    // 系统的视频文件
+    private File videoFile;
+    private MediaRecorder mRecorder;
+    // 显示视频预览的SurfaceView
+    private SurfaceView sView;
+    // 记录是否正在进行录制
+    private boolean isRecording;
+
+    private HandlerThread mBackgroundThread;
+    private Handler mBackgroundHandler;
+
+    private CaptureRequest.Builder mRequest;
+    private List<Surface> mSurfaceList = new ArrayList<>();
+
+    private TextureHelper mTextureHelper;
+    private RecorderHelper mRecorderHelper;
+    private CameraHelper mCameraHelper;
 
     private final TextureView.SurfaceTextureListener mSurfaceTextureListener
             = new TextureView.SurfaceTextureListener() {
@@ -123,6 +138,7 @@ public class MainActivity extends Activity {
         public void onSurfaceTextureUpdated(SurfaceTexture texture) {
         }
     };
+
 
     private final CameraDevice.StateCallback stateCallback = new CameraDevice.StateCallback() {
         //  摄像头被打开时激发该方法
@@ -160,8 +176,57 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         rootLayout = findViewById(R.id.root);
+        recordBn = findViewById(R.id.record);
+        stopBn = findViewById(R.id.stop);
+        // 让stopBn按钮不可用
+        stopBn.setEnabled(false);
+        //setUpCameraOutputs(width, height);
+        // 获取程序界面中录视频的两个按钮
 
-        requestPermissions(new String[]{Manifest.permission.CAMERA}, 0x123);
+        requestPermissions(new String[]{Manifest.permission.CAMERA,
+                Manifest.permission.RECORD_AUDIO,
+                Manifest.permission.INTERNET
+        },  0x123);
+
+
+        mTextureHelper = new TextureHelper(this);
+    }
+    @Override
+    public void onResume() {
+        super.onResume();
+        // 启动后台线程，用于执行回调中的代码
+        startBackgroundThread();
+        // 如果Activity是从stop/pause回来，TextureView是OK的，只需要重新开启camera就行
+        if (textureView.isAvailable()) {
+            openCamera(textureView.getWidth(), textureView.getHeight());
+        } else {
+            // Activity创建时，添加TextureView的监听，TextureView创建完成后就可以开启camera就行了
+            textureView.setSurfaceTextureListener(mSurfaceTextureListener);
+        }
+    }
+    @Override
+    public void onPause() {
+        // 关闭camera，关闭后台线程
+        closeCamera();
+        stopBackgroundThread();
+        super.onPause();
+    }
+
+    private void startBackgroundThread() {
+        mBackgroundThread = new HandlerThread("CameraBackground");
+        mBackgroundThread.start();
+        mBackgroundHandler = new Handler(mBackgroundThread.getLooper());
+    }
+
+    private void stopBackgroundThread() {
+        mBackgroundThread.quitSafely();
+        try {
+            mBackgroundThread.join();
+            mBackgroundThread = null;
+            mBackgroundHandler = null;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -176,20 +241,258 @@ public class MainActivity extends Activity {
     @Override
     public void onRequestPermissionsResult(int requestCode,
                                            @NonNull String[] permissions, @NonNull int[] grantResults) {
-        if (requestCode == 0x123 && grantResults.length == 1
-                && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+        if (requestCode == 0x123 && grantResults.length == 3
+                && grantResults[0] == PackageManager.PERMISSION_GRANTED
+                && grantResults[1] == PackageManager.PERMISSION_GRANTED
+                && grantResults[2] == PackageManager.PERMISSION_GRANTED ) {
             // 创建预览摄像头图片的TextureView组件
             textureView = new AutoFitTextureView(MainActivity.this, null);
             // 为TextureView组件设置监听器
             textureView.setSurfaceTextureListener(mSurfaceTextureListener);
             rootLayout.addView(textureView);
+
             findViewById(R.id.capture).setOnClickListener(view -> captureStillPicture());
             findViewById(R.id.switch_camera).setOnClickListener(view -> {
                 switchCameraWithMaskAnimation();
             });
-            //setUpCameraOutputs(width, height);
+            recordBn.setOnClickListener(view -> {
+                //recordVideo();
+                startRecord();
+            });
+            stopBn.setOnClickListener(view -> {
+                stopRecord();
+            });
+
         }
     }
+
+
+
+    private void addRecorderSurface() {
+        // 获取MediaRecorder中的surface，添加到request中、添加到surfaceList中
+        Surface recorderSurface = mRecorderHelper.getSurface();
+
+        if (null != recorderSurface) {
+            mRequest.addTarget(recorderSurface);
+            mSurfaceList.add(recorderSurface);
+        }
+    }
+
+    private void addTextureViewSurface() {
+        // 获取TextureView中的surface，添加到request中、添加到surfaceList中
+        Surface previewSurface = mTextureHelper.getSurface(textureView);
+
+        if (null != previewSurface) {
+            mRequest.addTarget(previewSurface);
+            mSurfaceList.add(previewSurface);
+        }
+    }
+
+
+    private void startRecord() {
+        // 设置Recorder配置，启动录像会话
+        //int sensorOrientation = mCameraHelper.getSensorOrientation(mCameraHelper.getBackCameraId());
+        int sensorOrientation = 0;
+        int displayRotation = getWindowManager().getDefaultDisplay().getRotation();
+        mRecorderHelper.configRecorder(sensorOrientation, displayRotation);
+
+        //startRecordSession();
+    }
+
+    private void stopRecord() {
+        // 关闭录像会话，停止录像，重新进入预览
+        mRecorderHelper.stop();
+        startPreviewSession();
+    }
+
+    private void startPreviewSession() {
+        if (null == cameraDevice || !textureView.isAvailable()) {
+            return;
+        }
+
+        try {
+            // 创建新的会话前，关闭以前的会话
+            closePreviewSession();
+
+            // 创建预览会话请求
+            mSurfaceList.clear();
+            mRequest = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
+            addTextureViewSurface();
+
+            // 启动会话
+            // 参数1：camera捕捉到的画面分别输出到surfaceList的各个surface中;
+            // 参数2：会话状态监听;
+            // 参数3：监听器中的方法会在指定的线程里调用，通过一个handler对象来指定线程;
+            cameraDevice.createCaptureSession(mSurfaceList, new CameraCaptureSession.StateCallback() {
+                @Override
+                public void onConfigured(@NonNull CameraCaptureSession session) {
+                    captureSession = session;
+                    updatePreview();
+                }
+
+                @Override
+                public void onConfigureFailed(@NonNull CameraCaptureSession session) {
+                }
+
+                @Override
+                public void onClosed(@NonNull CameraCaptureSession session) {
+                    super.onClosed(session);
+                }
+            }, mBackgroundHandler);
+
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void startRecordSession() {
+        if (null == cameraDevice || !textureView.isAvailable()) {
+            return;
+        }
+
+        try {
+            // 创建新的会话前，关闭以前的会话
+            closePreviewSession();
+
+            // 创建预览会话请求
+            mSurfaceList.clear();
+            mRequest = createCameraPreviewSession();
+            addTextureViewSurface();
+
+            // 启动会话
+            // 参数1：camera捕捉到的画面分别输出到surfaceList的各个surface中;
+            // 参数2：会话状态监听;
+            // 参数3：监听器中的方法会在指定的线程里调用，通过一个handler对象来指定线程;
+            cameraDevice.createCaptureSession(mSurfaceList, new CameraCaptureSession.StateCallback() {
+                @Override
+                public void onConfigured(@NonNull CameraCaptureSession session) {
+                    captureSession = session;
+                    updatePreview();
+                }
+
+                @Override
+                public void onConfigureFailed(@NonNull CameraCaptureSession session) {
+                }
+
+                @Override
+                public void onClosed(@NonNull CameraCaptureSession session) {
+                    super.onClosed(session);
+                }
+            }, mBackgroundHandler);
+
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void updatePreview() {
+        if (null == cameraDevice) {
+            return;
+        }
+
+        try {
+            mRequest.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
+
+            // 这个接口是预览。作用是把camera捕捉到的画面输出到surfaceList中的各个surface上，每隔一定时间重复一次
+            captureSession.setRepeatingRequest(mRequest.build(), null, mBackgroundHandler);
+
+            // 这个接口是拍照。由于拍照需要获得图像数据，所以这里需要实现CaptureCallback，在回调里获得图像数据
+//            mSession.capture(CaptureRequest request, CaptureCallback listener, Handler handler);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void closePreviewSession() {
+        if (null != captureSession) {
+            captureSession.close();
+            captureSession = null;
+        }
+    }
+
+
+    private void stopVideo() {
+        // 如果正在进行录制
+        if (isRecording) {
+            // 停止录制
+            mRecorder.stop();
+            // 释放资源
+            mRecorder.release();
+            mRecorder = null;
+            // 让recordBn按钮可用
+            recordBn.setEnabled(true);
+            // 让stopBn按钮不可用
+            stopBn.setEnabled(false);
+        }
+    }
+
+
+    private void recordVideo() {
+        // 获取当前时间戳
+        long currentTimeMillis = System.currentTimeMillis();
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss");
+        String formattedTime = sdf.format(new Date(currentTimeMillis));
+
+        // 生成随机字符串
+        Random random = new Random();
+        StringBuilder randomString = new StringBuilder();
+        for (int i = 0; i < 6; i++) {
+            randomString.append(random.nextInt(10)); // 生成6位数字
+        }
+
+        // 组合图片名称
+        String fileName = "IMG_" + formattedTime + "_" + randomString.toString() + ".mp4";
+
+        // 创建保存录制视频的视频文件
+        videoFile = new File("/storage/emulated/0/DCIM/Camera", fileName);
+
+        // 创建MediaRecorder对象
+        mRecorder = new MediaRecorder();
+        // 重置录音机状态，为下一次录音做好准备
+        mRecorder.reset();
+        // 设置从麦克风采集声音
+        mRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+        // 设置从摄像头采集图像
+        mRecorder.setVideoSource(MediaRecorder.VideoSource.CAMERA);
+        // 设置视频文件的输出格式
+        mRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+        // 设置声音编码格式
+        mRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.DEFAULT);
+        // 设置图像编码格式
+        mRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.MPEG_4_SP);
+        // 设置视频尺寸
+        mRecorder.setVideoSize(1920, 1080);
+        // 每秒 12帧
+        mRecorder.setVideoFrameRate(12);
+        mRecorder.setOutputFile(videoFile.getAbsolutePath());
+
+        // 获取 TextureView 的 SurfaceTexture
+        SurfaceTexture texture = textureView.getSurfaceTexture();
+
+        // 创建 Surface 对象
+        Surface surface = new Surface(texture);
+
+        // 使用 Surface 设置预览显示
+        mRecorder.setPreviewDisplay(surface);
+
+        try {
+            mRecorder.prepare();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        // 开始录制
+        mRecorder.start();
+        Toast.makeText(this, "开始录制", Toast.LENGTH_SHORT).show();
+
+        // 让recordBn按钮不可用
+        recordBn.setEnabled(false);
+        // 让stopBn按钮可用
+        stopBn.setEnabled(true);
+        isRecording = true;
+    }
+
+
 
     /**
      * 关闭相机设备
@@ -201,6 +504,9 @@ public class MainActivity extends Activity {
         if (cameraDevice != null) {
             cameraDevice.close();
             cameraDevice = null;
+        }
+        if(mRecorderHelper!= null) {
+            mRecorderHelper.release();
         }
     }
 
@@ -229,7 +535,7 @@ public class MainActivity extends Activity {
         };
 
 // 执行延迟任务
-        handler.postDelayed(removeMaskRunnable, 600); // 延迟 1000 毫秒（1 秒）
+        handler.postDelayed(removeMaskRunnable, 650); // 延迟 1000 毫秒（1 秒）
     }
 
 
@@ -280,6 +586,13 @@ public class MainActivity extends Activity {
         if (cameraDevice == null && maskViewflg == 0) {
             // 恢复之前的相机设备
            openCamera(textureView.getWidth(), textureView.getHeight());
+           int width =previewSize.getWidth();
+           String widthStr = String.valueOf(width);
+           int height =previewSize.getHeight();
+           String heightStr = String.valueOf(height);
+
+           Toast.makeText(this, widthStr, Toast.LENGTH_SHORT).show();
+           Toast.makeText(this, heightStr, Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -395,7 +708,7 @@ public class MainActivity extends Activity {
      * 这个方法设置相机预览的SurfaceTexture，创建用于预览的CaptureRequest.Builder，
      * 并通过CameraCaptureSession管理预览和捕获请求
      */
-    private void createCameraPreviewSession()
+    private CaptureRequest.Builder createCameraPreviewSession()
     {
         try
         {
@@ -449,6 +762,7 @@ public class MainActivity extends Activity {
         {
             e.printStackTrace();
         }
+        return previewRequestBuilder;
     }
 
     /**
@@ -535,7 +849,12 @@ public class MainActivity extends Activity {
             System.out.println("出现错误。");
         }
     }
-
+    /**
+     * 发送广播给媒体扫描器，使其扫描指定的文件
+     *
+     * @param mainActivity 主活动上下文，用于发送广播
+     * @param file 需要扫描的文件
+     */
     private void sendBroadcastToMediaScanner(MainActivity mainActivity, File file) {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
