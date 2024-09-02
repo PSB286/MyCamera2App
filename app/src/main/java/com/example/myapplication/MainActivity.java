@@ -33,6 +33,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.util.Log;
 import android.util.Size;
 import android.util.SparseIntArray;
@@ -98,6 +99,9 @@ public class MainActivity extends Activity {
     private ImageReader imageReader;
     private int maskViewflg=0;
 
+    private HandlerThread mBackgroundThread;
+    private Handler mBackgroundHandler;
+
 
     private final TextureView.SurfaceTextureListener mSurfaceTextureListener
             = new TextureView.SurfaceTextureListener() {
@@ -160,9 +164,48 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         rootLayout = findViewById(R.id.root);
-
+        // 创建预览摄像头图片的TextureView组件
+        textureView = new AutoFitTextureView(MainActivity.this, null);
         requestPermissions(new String[]{Manifest.permission.CAMERA}, 0x123);
     }
+    @Override
+    public void onResume() {
+        super.onResume();
+        // 启动后台线程，用于执行回调中的代码
+        startBackgroundThread();
+        // 如果Activity是从stop/pause回来，TextureView是OK的，只需要重新开启camera就行
+        if (textureView.isAvailable()) {
+            openCamera(textureView.getWidth(), textureView.getHeight());
+        } else {
+            // Activity创建时，添加TextureView的监听，TextureView创建完成后就可以开启camera就行了
+            textureView.setSurfaceTextureListener(mSurfaceTextureListener);
+        }
+    }
+    @Override
+    public void onPause() {
+        // 关闭camera，关闭后台线程
+        closeCamera();
+        stopBackgroundThread();
+        super.onPause();
+    }
+
+    private void startBackgroundThread() {
+        mBackgroundThread = new HandlerThread("CameraBackground");
+        mBackgroundThread.start();
+        mBackgroundHandler = new Handler(mBackgroundThread.getLooper());
+    }
+
+    private void stopBackgroundThread() {
+        mBackgroundThread.quitSafely();
+        try {
+            mBackgroundThread.join();
+            mBackgroundThread = null;
+            mBackgroundHandler = null;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
 
     /**
      * 请求权限结果回调方法
@@ -178,8 +221,7 @@ public class MainActivity extends Activity {
                                            @NonNull String[] permissions, @NonNull int[] grantResults) {
         if (requestCode == 0x123 && grantResults.length == 1
                 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            // 创建预览摄像头图片的TextureView组件
-            textureView = new AutoFitTextureView(MainActivity.this, null);
+
             // 为TextureView组件设置监听器
             textureView.setSurfaceTextureListener(mSurfaceTextureListener);
             rootLayout.addView(textureView);

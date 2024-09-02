@@ -25,4 +25,13 @@
         android:layout_marginBottom="64dp"
         android:layout_marginLeft="100dp"
         android:src="@drawable/switch_camera" />
+
+    <ImageButton
+        android:id="@+id/record"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center"
+        android:layout_marginBottom="64dp"
+        android:layout_marginRight="100dp"
+        android:src="@drawable/recordvideo" />
 </FrameLayout>
