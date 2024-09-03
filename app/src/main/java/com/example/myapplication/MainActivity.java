@@ -1,5 +1,7 @@
 package com.example.myapplication;
 
+import static android.content.ContentValues.TAG;
+
 import android.Manifest;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
@@ -28,10 +30,12 @@ import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
+import android.media.MediaRecorder;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Log;
@@ -50,6 +54,7 @@ import androidx.core.app.ActivityCompat;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -60,17 +65,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Random;
 
-/**
- * Description:<br>
- * 网站: <a href="http://www.crazyit.org">疯狂Java联盟</a><br>
- * Copyright (C), 2001-2020, Yeeku.H.Lee<br>
- * This program is protected by copyright laws.<br>
- * Program Name:<br>
- * Date:<br>
- *
- * @author Yeeku.H.Lee kongyeeku@163.com<br>
- * @version 1.0
- */
+
 public class MainActivity extends Activity {
     private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
 
@@ -97,17 +92,22 @@ public class MainActivity extends Activity {
     // 定义CameraCaptureSession成员变量
     private CameraCaptureSession captureSession;
     private ImageReader imageReader;
-    private int maskViewflg=0;
+    private int maskViewflg = 0;
 
     private HandlerThread mBackgroundThread;
     private Handler mBackgroundHandler;
-
+    // 在MainActivity中添加以下成员变量
+    private MediaRecorder mediaRecorder;
+    List<Surface>surfaces;
+    private boolean isRecording=false;
+    String filePath;
 
     private final TextureView.SurfaceTextureListener mSurfaceTextureListener
             = new TextureView.SurfaceTextureListener() {
         @Override
         public void onSurfaceTextureAvailable(SurfaceTexture texture
                 , int width, int height) {
+            startBackgroundThread();
             // 当TextureView可用时，打开摄像头
             openCamera(width, height);
         }
@@ -164,10 +164,32 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         rootLayout = findViewById(R.id.root);
+        mediaRecorder = new MediaRecorder();
         // 创建预览摄像头图片的TextureView组件
         textureView = new AutoFitTextureView(MainActivity.this, null);
-        requestPermissions(new String[]{Manifest.permission.CAMERA}, 0x123);
+        requestPermissions(new String[]{Manifest.permission.CAMERA,
+                Manifest.permission.RECORD_AUDIO,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE,}, 0x123);
+        // 为TextureView组件设置监听器
+        textureView.setSurfaceTextureListener(mSurfaceTextureListener);
+        rootLayout.addView(textureView);
+        findViewById(R.id.capture).setOnClickListener(view -> captureStillPicture());
+
+        findViewById(R.id.switch_camera).setOnClickListener(view -> {
+            switchCameraWithMaskAnimation();
+        });
+
+        findViewById(R.id.record).setOnClickListener(view -> {
+                if (!isRecording)
+                {
+                    startRecordingVideo();
+                } else {
+                    stopRecordingVideo();
+                }
+
+        });
     }
+
     @Override
     public void onResume() {
         super.onResume();
@@ -181,6 +203,7 @@ public class MainActivity extends Activity {
             textureView.setSurfaceTextureListener(mSurfaceTextureListener);
         }
     }
+
     @Override
     public void onPause() {
         // 关闭camera，关闭后台线程
@@ -207,31 +230,6 @@ public class MainActivity extends Activity {
     }
 
 
-    /**
-     * 请求权限结果回调方法
-     * 当活动请求用户授予权限时，此方法将被调用以通知请求结果
-     *
-     * @param requestCode 请求代码，用于标识请求权限的类型
-     * @param permissions 请求结果中权限的数组
-     * @param grantResults 对应于每个权限的授予权限结果数组，元素为PackageManager.PERMISSION_GRANTED或PackageManager.PERMISSION_DENIED
-     *                     权限请求结果的数组元素数量与permissions参数数组元素数量相同，一一对应
-     */
-    @Override
-    public void onRequestPermissionsResult(int requestCode,
-                                           @NonNull String[] permissions, @NonNull int[] grantResults) {
-        if (requestCode == 0x123 && grantResults.length == 1
-                && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-
-            // 为TextureView组件设置监听器
-            textureView.setSurfaceTextureListener(mSurfaceTextureListener);
-            rootLayout.addView(textureView);
-            findViewById(R.id.capture).setOnClickListener(view -> captureStillPicture());
-            findViewById(R.id.switch_camera).setOnClickListener(view -> {
-                switchCameraWithMaskAnimation();
-            });
-            //setUpCameraOutputs(width, height);
-        }
-    }
 
     /**
      * 关闭相机设备
@@ -246,14 +244,8 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void SwichCamera() {
-        // 切换摄像头
-        closeCamera();
-        mCameraId = "1".equals(mCameraId) ? "0" : "1";
-        openCamera(textureView.getWidth(), textureView.getHeight());
-    }
 
-    private void SwichCamera(View maskView ) {
+    private void SwichCamera(View maskView) {
         // 切换摄像头
         closeCamera();
         mCameraId = "1".equals(mCameraId) ? "0" : "1";
@@ -275,7 +267,6 @@ public class MainActivity extends Activity {
     }
 
 
-
     private void switchCameraWithMaskAnimation() {
         if (cameraDevice != null) {
             // 创建一个蒙版视图
@@ -285,8 +276,8 @@ public class MainActivity extends Activity {
 
             // 获取根布局
             FrameLayout rootView = findViewById(R.id.root); // 假设root是你的主布局
-            int width =previewSize.getWidth();
-            int height =previewSize.getHeight();
+            int width = previewSize.getWidth();
+            int height = previewSize.getHeight();
 
             // 设置蒙版视图的布局参数
             FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
@@ -312,16 +303,9 @@ public class MainActivity extends Activity {
                 public void onAnimationEnd(Animator animation) {
                     maskViewflg = 1;
                     SwichCamera(maskView);
-                   // Toast.makeText(MainActivity.this, "动画结束", Toast.LENGTH_SHORT).show();
+                    // Toast.makeText(MainActivity.this, "动画结束", Toast.LENGTH_SHORT).show();
                 }
             });
-        }
-    }
-
-    private void restoreCamera() {
-        if (cameraDevice == null && maskViewflg == 0) {
-            // 恢复之前的相机设备
-           openCamera(textureView.getWidth(), textureView.getHeight());
         }
     }
 
@@ -330,8 +314,7 @@ public class MainActivity extends Activity {
      * 捕获静态图片的方法
      * 该方法用于捕获静态图片，设置相机参数以确保拍摄出清晰的照片，并在拍摄完成后处理后续的显示和界面更新
      */
-    private void captureStillPicture()
-    {
+    private void captureStillPicture() {
         try {
             if (cameraDevice == null) {
                 return;
@@ -361,8 +344,7 @@ public class MainActivity extends Activity {
                         // 拍照完成时激发该方法
                         @Override
                         public void onCaptureCompleted(@NonNull CameraCaptureSession session,
-                                                       @NonNull CaptureRequest request, @NonNull TotalCaptureResult result)
-                        {
+                                                       @NonNull CaptureRequest request, @NonNull TotalCaptureResult result) {
                             try {
                                 // 重设自动对焦模式
                                 previewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER,
@@ -381,6 +363,7 @@ public class MainActivity extends Activity {
             e.printStackTrace();
         }
     }
+
     // 根据手机的旋转方向确定预览图像的方向
     private void configureTransform(int viewWidth, int viewHeight) {
         if (null == previewSize) {
@@ -404,15 +387,14 @@ public class MainActivity extends Activity {
             matrix.postRotate(90 * (rotation - 2), centerX, centerY);
         }
         // 处理手机倒置的情况
-        else if (Surface.ROTATION_180 == rotation)
-        {
+        else if (Surface.ROTATION_180 == rotation) {
             matrix.postRotate(180, centerX, centerY);
         }
         textureView.setTransform(matrix);
     }
+
     // 打开摄像头
-    private void openCamera(int width, int height)
-    {
+    private void openCamera(int width, int height) {
         setUpCameraOutputs(width, height);
         configureTransform(width, height);
         CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
@@ -425,9 +407,7 @@ public class MainActivity extends Activity {
             manager.openCamera(mCameraId, stateCallback, null); // ①
 
 
-        }
-        catch (CameraAccessException e)
-        {
+        } catch (CameraAccessException e) {
             e.printStackTrace();
         }
     }
@@ -437,13 +417,25 @@ public class MainActivity extends Activity {
      * 这个方法设置相机预览的SurfaceTexture，创建用于预览的CaptureRequest.Builder，
      * 并通过CameraCaptureSession管理预览和捕获请求
      */
-    private void createCameraPreviewSession()
-    {
-        try
-        {
+    private void createCameraPreviewSession() {
+        try {
+            surfaces=new ArrayList<>();
+
+            //预览Surface
             SurfaceTexture texture = textureView.getSurfaceTexture();
             texture.setDefaultBufferSize(previewSize.getWidth(), previewSize.getHeight());
             Surface surface = new Surface(texture);
+            surfaces.add(surface);
+
+            // 创建ImageReader对象(拍照)
+            imageReader = ImageReader.newInstance(previewSize.getWidth(), previewSize.getHeight(), ImageFormat.JPEG, 1);
+            imageReader.setOnImageAvailableListener(mImageReaderListener, null);
+            surfaces.add(imageReader.getSurface());
+
+            //添加录制Surface
+            initRecording();
+            surfaces.add(mediaRecorder.getSurface());
+
             // 创建作为预览的CaptureRequest.Builder
             previewRequestBuilder = cameraDevice
                     .createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
@@ -454,11 +446,9 @@ public class MainActivity extends Activity {
                     new CameraCaptureSession.StateCallback() // ③
                     {
                         @Override
-                        public void onConfigured(@NonNull CameraCaptureSession cameraCaptureSession)
-                        {
+                        public void onConfigured(@NonNull CameraCaptureSession cameraCaptureSession) {
                             // 如果摄像头为null，直接结束方法
-                            if (null == cameraDevice)
-                            {
+                            if (null == cameraDevice) {
                                 return;
                             }
                             // 当摄像头已经准备好时，开始显示预览
@@ -474,32 +464,138 @@ public class MainActivity extends Activity {
                             try {
                                 // 设置预览时连续捕获图像数据
                                 captureSession.setRepeatingRequest(previewRequest, null, null);  // ④
-                            }
-                            catch (CameraAccessException e)
-                            {
+                            } catch (CameraAccessException e) {
                                 e.printStackTrace();
                             }
                         }
-                        @Override public void onConfigureFailed(@NonNull CameraCaptureSession cameraCaptureSession)
-                        {
+
+                        @Override
+                        public void onConfigureFailed(@NonNull CameraCaptureSession cameraCaptureSession) {
                             Toast.makeText(MainActivity.this, "配置失败！",
                                     Toast.LENGTH_SHORT).show();
                         }
                     }, null);
-        }
-        catch (CameraAccessException e)
-        {
+        } catch (CameraAccessException e) {
             e.printStackTrace();
+        }
+    }
+
+    private void initRecording() {
+        // 定义图片的保存路径和文件名
+        String fileName = "IMG_" + System.currentTimeMillis() + ".jpg";
+        String filePath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).getAbsolutePath() + File.separator + fileName;
+
+        File recorderFile = new File(MainActivity.this.getExternalFilesDir(null).getAbsolutePath() + "/video/");
+        if (!recorderFile.exists()) {
+            recorderFile.mkdir();
+        }
+        String recorderPath = recorderFile.getAbsolutePath() + "/" + System.currentTimeMillis() + ".mp4";
+        Log.e(TAG, "视频路径：" + recorderPath);
+        Toast.makeText(this, "视频路径：" + recorderPath, Toast.LENGTH_SHORT).show();
+        mediaRecorder = new MediaRecorder();
+        mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+        mediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
+        mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+        mediaRecorder.setOutputFile(filePath);
+        mediaRecorder.setVideoEncodingBitRate(10000000);
+        mediaRecorder.setVideoFrameRate(30);
+        mediaRecorder.setVideoSize(previewSize.getWidth(), previewSize.getHeight());
+        mediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
+//        mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+
+        // 开始录制
+        try {
+            mediaRecorder.prepare();
+            mediaRecorder.start();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void startRecordingVideo() {
+        // 创建录制视频请求
+        try {
+            CaptureRequest.Builder recordRequestBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_RECORD);
+            recordRequestBuilder.addTarget(mediaRecorder.getSurface()); // 设置录制目标Surface
+            captureSession.setRepeatingRequest(recordRequestBuilder.build(), null, null); // 开始录制视频
+            Toast.makeText(this, "开始", Toast.LENGTH_SHORT).show();
+
+            isRecording = true;
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void stopRecordingVideo() {
+        // 停止录制视频
+        try {
+            mediaRecorder.stop();
+        } catch (IllegalStateException e) {
+            e.printStackTrace();
+        } finally {
+            mediaRecorder.reset();
+            mediaRecorder.release();
+            mediaRecorder = null;
+        }
+        isRecording = false;
+        //关闭相机预览会话
+        if (captureSession != null) {
+            captureSession.close();
+            captureSession = null;
+            createCameraPreviewSession();
+        }
+
+    }
+
+
+    private ImageReader.OnImageAvailableListener mImageReaderListener = reader -> {
+        // 获取到拍照的图像数据
+        Image image = reader.acquireLatestImage();
+
+        // 获取图片的字节数组
+        ByteBuffer buffer = image.getPlanes()[0].getBuffer();
+        byte[] data = new byte[buffer.remaining()];
+        buffer.get(data);
+
+        // 保存图片到相册
+        saveImageToGallery(data);
+
+        // 释放图像资源
+        image.close();
+    };
+    private void saveImageToGallery(byte[] data) {
+        // 定义图片的保存路径和文件名
+        String fileName = "IMG_" + System.currentTimeMillis() + ".jpg";
+        String filePath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).getAbsolutePath() + File.separator + fileName;
+
+        // 创建文件输出流
+        try {
+            FileOutputStream fos = new FileOutputStream(filePath);
+            fos.write(data);
+            fos.close();
+
+            // 通知图库更新
+            MediaScannerConnection.scanFile(this, new String[]{filePath}, null, null);
+
+            // 在某些设备上，可能需要发送广播通知才能使图片立即出现在相册中
+            sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(new File(filePath))));
+
+            // 显示保存成功的提示
+            Toast.makeText(this, "图片保存成功", Toast.LENGTH_SHORT).show();
+        } catch (IOException e) {
+            e.printStackTrace();
+            // 显示保存失败的提示
+            Toast.makeText(this, "图片保存失败", Toast.LENGTH_SHORT).show();
         }
     }
 
     /**
      * 设置摄像头的输出参数，包括照片尺寸和预览尺寸
-     * @param width 预览画面的宽度
+     *
+     * @param width  预览画面的宽度
      * @param height 预览画面的高度
      */
-    private void setUpCameraOutputs(int width, int height)
-    {
+    private void setUpCameraOutputs(int width, int height) {
         // 获取当前时间戳
         long currentTimeMillis = System.currentTimeMillis();
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss");
@@ -513,7 +609,7 @@ public class MainActivity extends Activity {
         }
 
         // 组合图片名称
-        String fileName = "IMG_"+formattedTime + "_" + randomString.toString() + ".jpg";
+        String fileName = "IMG_" + formattedTime + "_" + randomString.toString() + ".jpg";
 
         CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
         try {
@@ -539,23 +635,18 @@ public class MainActivity extends Activity {
                 File file = new File("/storage/emulated/0/DCIM/Camera", fileName);
                 buffer.get(bytes);
                 try (
-                        FileOutputStream output = new FileOutputStream(file))
-                {
+                        FileOutputStream output = new FileOutputStream(file)) {
                     output.write(bytes);
                     Toast.makeText(MainActivity.this, "保存: "
                             + file, Toast.LENGTH_SHORT).show();
-                }
-                catch (Exception e)
-                {
+                } catch (Exception e) {
                     e.printStackTrace();
-                }
-                finally
-                {
+                } finally {
                     image.close();
                     // 发送广播通知图库扫描图片
                     sendBroadcastToMediaScanner(MainActivity.this, file);
                 }
-            },null);
+            }, null);
 
             // 获取最佳的预览尺寸
             previewSize = chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class),
@@ -567,13 +658,9 @@ public class MainActivity extends Activity {
             } else {
                 textureView.setAspectRatio(previewSize.getHeight(), previewSize.getWidth());
             }
-        }
-        catch (CameraAccessException e)
-        {
+        } catch (CameraAccessException e) {
             e.printStackTrace();
-        }
-        catch (NullPointerException e)
-        {
+        } catch (NullPointerException e) {
             System.out.println("出现错误。");
         }
     }
@@ -598,47 +685,42 @@ public class MainActivity extends Activity {
      * 选择最合适的预览尺寸
      * 从摄像头支持的分辨率列表中选择一个最合适的预览尺寸，确保选择的尺寸满足指定的宽高和宽高比要求
      *
-     * @param choices 摄像头支持的分辨率列表
-     * @param width 预览Surface的宽度
-     * @param height 预览Surface的高度
+     * @param choices     摄像头支持的分辨率列表
+     * @param width       预览Surface的宽度
+     * @param height      预览Surface的高度
      * @param aspectRatio 期望的宽高比
      * @return 返回最合适的预览尺寸如果找不到合适的尺寸，返回摄像头支持的第一个分辨率
      */
     private static Size chooseOptimalSize(Size[] choices
-            , int width, int height, Size aspectRatio)
-    {
+            , int width, int height, Size aspectRatio) {
         // 收集摄像头支持的打过预览Surface的分辨率
         List<Size> bigEnough = new ArrayList<>();
         int w = aspectRatio.getWidth();
         int h = aspectRatio.getHeight();
-        for (Size option : choices)
-        {
+        for (Size option : choices) {
             if (option.getHeight() == option.getWidth() * h / w &&
-                    option.getWidth() >= width && option.getHeight() >= height)
-            {
+                    option.getWidth() >= width && option.getHeight() >= height) {
                 bigEnough.add(option);
             }
         }
         // 如果找到多个预览尺寸，获取其中面积最小的。
-        if (bigEnough.size() > 0)
-        {
+        if (bigEnough.size() > 0) {
             return Collections.min(bigEnough, new CompareSizesByArea());
-        }
-        else
-        {
+        } else {
             System.out.println("找不到合适的预览尺寸！！！");
             return choices[0];
         }
     }
+
     // 为Size定义一个比较器Comparator
-    static class CompareSizesByArea implements Comparator<Size>
-    {
+    static class CompareSizesByArea implements Comparator<Size> {
         @Override
-        public int compare(Size lhs, Size rhs)
-        {
+        public int compare(Size lhs, Size rhs) {
             // 强转为long保证不会发生溢出
             return Long.signum((long) lhs.getWidth() * lhs.getHeight() -
                     (long) rhs.getWidth() * rhs.getHeight());
         }
     }
+
 }
+
