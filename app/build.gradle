@@ -44,5 +44,5 @@ dependencies {
     testImplementation libs.junit
     androidTestImplementation libs.ext.junit
     androidTestImplementation libs.espresso.core
-    implementation 'androidx.databinding:databinding-runtime:4.1.0'
+    implementation libs.databinding.runtime
 }
