@@ -245,9 +245,9 @@ public class CameraActivity extends AppCompatActivity {
                     Arrays.asList(map.getOutputSizes(ImageFormat.JPEG)),
                     new CompareSizesByArea());
             // 获取最佳的预览尺寸
-           // previewSize = chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class), width, height, largest);
+            previewSize = chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class), width, height, largest);
             Log.d("xxx", "--initAutoFitTextureView--");
-            previewSize=new Size(1600,720);
+            //previewSize=new Size(1600,720);
             Log.d("--initAutoFitTextureView--", "高" + previewSize.getHeight()+"宽"+previewSize.getWidth());
 
             // 根据选中的预览尺寸来调整预览组件（TextureView的）的长宽比
