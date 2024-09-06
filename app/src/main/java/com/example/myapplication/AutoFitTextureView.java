@@ -2,6 +2,7 @@ package com.example.myapplication;
 
 import android.content.Context;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.TextureView;
 
 //继承TextureView类，实现自动调整TextureView尺寸以适应预览尺寸
@@ -26,6 +27,8 @@ public class AutoFitTextureView extends TextureView
         mRatioWidth = width;
         mRatioHeight = height;
         requestLayout();
+        // 添加日志输出，方便调试
+        Log.d("--AutoFitTextureView--", "Setting aspect ratio: " + width + ":" + height);
     }
 
     /**
@@ -38,15 +41,24 @@ public class AutoFitTextureView extends TextureView
     @Override
     public void onMeasure(int widthMeasureSpec, int heightMeasureSpec)
     {
+        // 调用父类的onMeasure方法，确保基本的测量逻辑得到执行
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+        Log.d("--AutoFitTextureView-onMeasure-", "Setting aspect ratio: " + widthMeasureSpec + ":" + heightMeasureSpec);
+
+        // 从测量规范中提取出宽度和高度的具体尺寸
         int width = MeasureSpec.getSize(widthMeasureSpec);
         int height = MeasureSpec.getSize(heightMeasureSpec);
+        Log.d("--AutoFitTextureView-onMeasure-", "Setting aspect ratio: " + width + ":" + height);
+        // 如果宽高比的分子或分母为0，则直接使用传入的宽度和高度作为测量尺寸
         if (0 == mRatioWidth || 0 == mRatioHeight)
         {
             setMeasuredDimension(width, height);
         }
         else
         {
+            // 根据宽高比来调整测量尺寸
+            // 如果根据宽高比计算出的宽度小于给定的高度，或者高度小于给定的宽度，
+            // 则相应地调整高度或宽度，以保持宽高比的要求
             if (width < height * mRatioWidth / mRatioHeight)
             {
                 setMeasuredDimension(width, width * mRatioHeight / mRatioWidth);

@@ -2,29 +2,30 @@
     android:id="@+id/root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#050505">
+    android:background="#050505"
+    android:fitsSystemWindows="false">
 
     <com.example.myapplication.AutoFitTextureView
         android:id="@+id/texture"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
         android:backgroundTint="#0B0808" />
 
-        <ImageButton
-            android:id="@+id/record"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="bottom|center"
-            android:layout_marginRight="30dp"
-            android:src="@drawable/recordvideo" />
+    <ImageButton
+        android:id="@+id/record"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center"
+        android:layout_marginRight="30dp"
+        android:src="@drawable/recordvideo" />
 
-        <ImageButton
-            android:id="@+id/stop"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="bottom|center"
-            android:layout_marginLeft="30dp"
-            android:src="@drawable/stop" />
+    <ImageButton
+        android:id="@+id/stop"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center"
+        android:layout_marginLeft="30dp"
+        android:src="@drawable/stop" />
 
     <ImageButton
         android:id="@+id/capture"
@@ -33,6 +34,7 @@
         android:layout_gravity="bottom|center"
         android:layout_marginBottom="64dp"
         android:src="@drawable/capture" />
+
     <ImageButton
         android:id="@+id/switch_camera"
         android:layout_width="wrap_content"

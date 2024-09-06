@@ -1,9 +1,14 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
-    <style name="Base.Theme.MyApplication" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
-    </style>
+<resources>
+    <!-- res/values/styles.xml -->
+    <style name="FullscreenTheme" parent="Theme.AppCompat.Light.NoActionBar">    <!-- 设置全屏 -->
+        <item name="android:windowFullscreen">true</item>
+        <!-- 设置状态栏透明 -->
+        <item name="android:windowTranslucentStatus">true</item>
+        <!-- 设置导航栏透明 -->
+        <item name="android:windowTranslucentNavigation">true</item>
+        <!-- 不避开系统窗口 -->
+        <item name="android:fitsSystemWindows">false</item></style>
+    <item name="windowActionBar" type="bool">false</item>
+    <item name="windowNoTitle" type="bool">true</item>
 
-    <style name="Theme.MyApplication" parent="Base.Theme.MyApplication" />
 </resources>

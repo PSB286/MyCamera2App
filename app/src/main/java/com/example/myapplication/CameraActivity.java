@@ -37,7 +37,10 @@ import android.util.SparseIntArray;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.view.TextureView;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.Toast;
@@ -59,7 +62,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-public class CameraActivity extends Activity {
+public class CameraActivity extends AppCompatActivity {
     AutoFitTextureView textureView;
     List<Surface> surfaces;
     private CameraDevice mCameraDevice;
@@ -138,19 +141,80 @@ public class CameraActivity extends Activity {
         }
     };
 
+    private final TextureView.SurfaceTextureListener mSurfaceTextureListener
+            = new TextureView.SurfaceTextureListener() {
+        @Override
+        public void onSurfaceTextureAvailable(SurfaceTexture texture
+                , int width, int height) {
+            // 当TextureView可用时，打开摄像头
+            openCamera(width, height);
+        }
+
+        @Override
+        public void onSurfaceTextureSizeChanged(SurfaceTexture texture
+                , int width, int height) {
+            configureTransform(width, height);
+        }
+
+        @Override
+        public boolean onSurfaceTextureDestroyed(SurfaceTexture texture) {
+            return true;
+        }
+
+        @Override
+        public void onSurfaceTextureUpdated(SurfaceTexture texture) {
+        }
+    };
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         //EdgeToEdge.enable(this);
+        // 设置全屏模式
+        int flags = View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                | View.SYSTEM_UI_FLAG_FULLSCREEN
+                | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION;
+        getWindow().getDecorView().setSystemUiVisibility(flags);
+        getWindow().setStatusBarColor(getColor(android.R.color.transparent));
+        getWindow().setNavigationBarColor(getColor(android.R.color.transparent));
+
+        EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.root), (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            return insets;
+        });
         textureView = findViewById(R.id.texture);// 绑定TextureView
         rootLayout = findViewById(R.id.root);
         initRequestPermissions();// 申请摄像头权限
-        initAutoFitTextureView(textureView,textureView.getWidth(), textureView.getHeight());// 初始化AutoFitTextureView
-        initClickListener(); // 点击事件初始化
-        //initCamera2();
-        openCamera(textureView.getWidth(), textureView.getHeight());
+        initClickListener();
+    }
+    @Override
+    public void onResume() {
+        super.onResume();
+        // Toast.makeText(MainActivity.this, "onResume", Toast.LENGTH_SHORT);
+        // 启动后台线程，用于执行回调中的代码
+       // startBackgroundThread();
+        // 如果Activity是从stop/pause回来，TextureView是OK的，只需要重新开启camera就行
+        if (textureView.isAvailable()) {
+            openCamera(textureView.getWidth(), textureView.getHeight());
+        } else {
+            // Activity创建时，添加TextureView的监听，TextureView创建完成后就可以开启camera就行了
+            textureView.setSurfaceTextureListener(mSurfaceTextureListener);
+        }
+    }
+    @Override
+    public void onPause() {
+        // Toast.makeText(MainActivity.this, "onPause", Toast.LENGTH_SHORT);
+        // 关闭camera，关闭后台线程
+        closeCamera();
+        //stopBackgroundThread();
+        super.onPause();
     }
 
     private void initRequestPermissions() {
@@ -181,26 +245,36 @@ public class CameraActivity extends Activity {
                     Arrays.asList(map.getOutputSizes(ImageFormat.JPEG)),
                     new CompareSizesByArea());
             // 获取最佳的预览尺寸
-            previewSize = chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class),
-                    width, height, largest);
+           // previewSize = chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class), width, height, largest);
+            Log.d("xxx", "--initAutoFitTextureView--");
+            previewSize=new Size(1600,720);
+            Log.d("--initAutoFitTextureView--", "高" + previewSize.getHeight()+"宽"+previewSize.getWidth());
+
             // 根据选中的预览尺寸来调整预览组件（TextureView的）的长宽比
             int orientation = getResources().getConfiguration().orientation;
             if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
                 textureView.setAspectRatio(previewSize.getWidth(), previewSize.getHeight());
+
             } else {
                 textureView.setAspectRatio(previewSize.getHeight(), previewSize.getWidth());
             }
+
+            //previewSize=new Size(2944,2944);
+
+
         } catch (CameraAccessException e) {
             e.printStackTrace();
         } catch (NullPointerException e) {
             System.out.println("出现错误。");
-            Log.d("initAutoFitTextureView", "出现错误。");
+            Log.d("--initAutoFitTextureView--", "出现错误。");
         }
         configureTransform(width, height);
     }
 
     // 根据手机的旋转方向确定预览图像的方向
     private void configureTransform(int viewWidth, int viewHeight) {
+
+        Log.d("--configureTransform--", "宽"+viewWidth+"高"+viewHeight);
         if (null == previewSize) {
             return;
         }
@@ -258,8 +332,8 @@ public class CameraActivity extends Activity {
         switch_camera.setOnClickListener(v -> {
             if (v.getId() == R.id.switch_camera) {
                 Toast.makeText(CameraActivity.this, "点击了切换摄像头按钮", Toast.LENGTH_SHORT).show();
-               // switchCameraWithMaskAnimation();
-                SwichCamera();
+                switchCameraWithMaskAnimation();
+                //SwichCamera();
             }
         });
 
@@ -278,8 +352,8 @@ public class CameraActivity extends Activity {
             maskView.setBackgroundColor(Color.BLACK); // 设置背景色为黑色
             maskView.setAlpha(0f); // 初始透明度为0
 
-            int width =previewSize.getWidth();
-            int height =previewSize.getHeight();
+            int width =textureView.getWidth();
+            int height =textureView.getHeight();
 
             // 设置蒙版视图的布局参数
             FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
@@ -343,7 +417,7 @@ public class CameraActivity extends Activity {
 
     private void openCamera(int width, int height) {
         //setUpCameraOutputs(width, height);
-        configureTransform(width, height);
+        initAutoFitTextureView(textureView,textureView.getWidth(), textureView.getHeight());
         CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
         try {
             // 如果用户没有授权使用摄像头，直接返回
@@ -407,7 +481,6 @@ public class CameraActivity extends Activity {
             e.printStackTrace();
         }
     }
-
     private void stopRecordingVideo() {
         try {
             mMediaRecorder.stop();
@@ -431,8 +504,6 @@ public class CameraActivity extends Activity {
         // 重新创建预览会话
         createCaptureSession(mCameraDevice);
     }
-
-
     private void addToGallery(String videoFilePath) {
         MediaScannerConnection.scanFile(this, new String[]{videoFilePath}, null,
                 (path, uri) -> {
@@ -440,44 +511,10 @@ public class CameraActivity extends Activity {
                     Toast.makeText(this, "视频路径：" + recorderPath, Toast.LENGTH_SHORT).show();
                 });
     }
-
-//    @SuppressLint("MissingPermission")
-//    private void initCamera2() {
-//        CameraManager cameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
-//        try {
-//            String[] cameraIdList = cameraManager.getCameraIdList();
-//            cameraManager.openCamera(cameraIdList[0], new CameraDevice.StateCallback() {
-//                @Override
-//                public void onOpened(@NonNull CameraDevice cameraDevice) {
-//                    mCameraDevice = cameraDevice;
-//                    createCaptureSession(cameraDevice);
-//                }
-//
-//                @Override
-//                public void onDisconnected(@NonNull CameraDevice cameraDevice) {
-//                    if (mCameraDevice != null) {
-//                        mCameraDevice.close();
-//                        mCameraDevice = null;
-//                    }
-//                }
-//
-//                @Override
-//                public void onError(@NonNull CameraDevice cameraDevice, int error) {
-//                    if (mCameraDevice != null) {
-//                        mCameraDevice.close();
-//                        mCameraDevice = null;
-//                    }
-//                }
-//            }, null);
-//        } catch (CameraAccessException e) {
-//            e.printStackTrace();
-//        }
-//    }
-
     private static Size chooseOptimalSize(Size[] choices
             , int width, int height, Size aspectRatio)
     {
-        // 收集摄像头支持的打过预览Surface的分辨率
+        // 收集摄像头支持的打开预览Surface的分辨率
         List<Size> bigEnough = new ArrayList<>();
         int w = aspectRatio.getWidth();
         int h = aspectRatio.getHeight();
@@ -489,6 +526,14 @@ public class CameraActivity extends Activity {
                 bigEnough.add(option);
             }
         }
+
+
+        for(int i=0;i<bigEnough.toArray().length;i++) {
+            // System.out.println("宽度: " + size.getWidth() + ", 高度: " + size.getHeight());
+            // Toast.makeText(CameraActivity.this, "宽度: " + size.getWidth() + ", 高度: " + size.getHeight(), Toast.LENGTH_SHORT)
+            Log.d("--chooseOptimalSize--", "宽度: " + bigEnough.get(i).getWidth() + ", 高度: " + bigEnough.get(i).getHeight());
+        }
+
         // 如果找到多个预览尺寸，获取其中面积最小的。
         if (!bigEnough.isEmpty())
         {
@@ -497,7 +542,7 @@ public class CameraActivity extends Activity {
         else
         {
             System.out.println("找不到合适的预览尺寸！！！");
-            Log.d("chooseOptimalSize", "找不到合适的预览尺寸！！！");
+            Log.d("--chooseOptimalSize--", "找不到合适的预览尺寸！！！");
             // Toast.makeText(CameraActivity.this, "找不到合适的预览尺寸！！！", Toast.LENGTH_SHORT).show();
             return choices[0];
         }
@@ -596,7 +641,6 @@ public class CameraActivity extends Activity {
         mMediaRecorder.setVideoSize(previewSize.getWidth(), previewSize.getHeight());
         mMediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
         mMediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
-
         try {
             mMediaRecorder.prepare();
         } catch (IOException e) {
