@@ -39,6 +39,7 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.TextureView;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
@@ -73,9 +74,9 @@ public class CameraActivity extends AppCompatActivity {
     //
     FrameLayout rootLayout;
     //按键定义
-    private ImageButton record, stop, switch_camera, capture;
+    private ImageButton record, stop, switch_camera, capture,switch_frame;
     //
-    private int maskViewflg=0;
+    private int initPreviewSize=0;
     // 捕获会话
     private CameraCaptureSession captureSession;
     // 用于捕获照片的ImageReader
@@ -244,10 +245,19 @@ public class CameraActivity extends AppCompatActivity {
             Size largest = Collections.max(
                     Arrays.asList(map.getOutputSizes(ImageFormat.JPEG)),
                     new CompareSizesByArea());
-            // 获取最佳的预览尺寸
-            previewSize = chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class), width, height, largest);
-            Log.d("xxx", "--initAutoFitTextureView--");
+            if(initPreviewSize==0) {
+                // 获取最佳的预览尺寸
+                Toast.makeText(CameraActivity.this, "initPreviewSize", Toast.LENGTH_SHORT).show();
+                previewSize = chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class), width, height, largest);
+                Log.d("xxx", "--initAutoFitTextureView--");
+                initPreviewSize=1;
+            }
+            Toast.makeText(CameraActivity.this, "高"+previewSize.getHeight()+"宽"+previewSize.getWidth(), Toast.LENGTH_SHORT).show();
             //previewSize=new Size(1600,720);
+            //textureView.setLayoutParams(new ViewGroup.LayoutParams(previewSize.getWidth(), previewSize.getHeight()));
+            Position_frame(previewSize);
+
+            // 应用新的 LayoutParams
             Log.d("--initAutoFitTextureView--", "高" + previewSize.getHeight()+"宽"+previewSize.getWidth());
 
             // 根据选中的预览尺寸来调整预览组件（TextureView的）的长宽比
@@ -269,6 +279,43 @@ public class CameraActivity extends AppCompatActivity {
             Log.d("--initAutoFitTextureView--", "出现错误。");
         }
         configureTransform(width, height);
+    }
+
+    private void  Position_frame(Size previewSize){
+        if((previewSize.getHeight()==720)&&(previewSize.getWidth()==1600)) {
+            // 获取 FrameLayout.LayoutParams
+            FrameLayout.LayoutParams layoutParams = (FrameLayout.LayoutParams) textureView.getLayoutParams();
+
+            // 设置 topMargin 为 100dp
+            int margin = (int) (0 * getResources().getDisplayMetrics().density);
+            layoutParams.topMargin = margin;
+
+            // 应用新的 LayoutParams
+            textureView.setLayoutParams(layoutParams);
+        }
+        else if((previewSize.getHeight()==720)&&(previewSize.getWidth()==720))
+        {
+            // 获取 FrameLayout.LayoutParams
+            FrameLayout.LayoutParams layoutParams = (FrameLayout.LayoutParams) textureView.getLayoutParams();
+
+            // 设置 topMargin 为 100dp
+            int margin = (int) (160 * getResources().getDisplayMetrics().density);
+            layoutParams.topMargin = margin;
+
+            // 应用新的 LayoutParams
+            textureView.setLayoutParams(layoutParams);
+        }
+        else {
+            // 获取 FrameLayout.LayoutParams
+            FrameLayout.LayoutParams layoutParams = (FrameLayout.LayoutParams) textureView.getLayoutParams();
+
+            // 设置 topMargin 为 100dp
+            int margin = (int) (100 * getResources().getDisplayMetrics().density);
+            layoutParams.topMargin = margin;
+
+            // 应用新的 LayoutParams
+            textureView.setLayoutParams(layoutParams);
+        }
     }
 
     // 根据手机的旋转方向确定预览图像的方向
@@ -308,7 +355,9 @@ public class CameraActivity extends AppCompatActivity {
         stop = findViewById(R.id.stop);
         switch_camera = findViewById(R.id.switch_camera);
         capture = findViewById(R.id.capture);
+        switch_frame=findViewById(R.id.frame_switch);
         stop.setEnabled(false);
+
         record.setOnClickListener(v -> {
             if (v.getId() == R.id.record) {
                 record.setEnabled(true);
@@ -343,6 +392,34 @@ public class CameraActivity extends AppCompatActivity {
                 takePicture();
             }
         });
+
+        switch_frame.setOnClickListener(v -> {
+            if (v.getId() == R.id.frame_switch) {
+                Toast.makeText(CameraActivity.this, "点击了切换帧按钮", Toast.LENGTH_SHORT).show();
+                SwichFrame();
+            }
+        });
+    }
+
+    private void SwichFrame()
+    {
+        if((previewSize.getWidth()==1600)&&(previewSize.getHeight()==720))
+        {
+            previewSize=new Size(720,720);
+            Toast.makeText(CameraActivity.this, "1高"+previewSize.getHeight()+"宽"+previewSize.getWidth(), Toast.LENGTH_SHORT).show();
+            openCamera(previewSize.getWidth(),previewSize.getHeight());
+        }
+        else if((previewSize.getWidth()==960)&&(previewSize.getHeight()==720))
+        {
+            previewSize=new Size(1600,720);
+            Toast.makeText(CameraActivity.this, "2高"+previewSize.getHeight()+"宽"+previewSize.getWidth(), Toast.LENGTH_SHORT).show();
+            openCamera(previewSize.getWidth(),previewSize.getHeight());
+        }
+        else {
+            previewSize=new Size(960,720);
+            Toast.makeText(CameraActivity.this, "4高"+previewSize.getHeight()+"宽"+previewSize.getWidth(), Toast.LENGTH_SHORT).show();
+            openCamera(previewSize.getWidth(),previewSize.getHeight());
+        }
     }
 
     private void switchCameraWithMaskAnimation() {
@@ -377,7 +454,7 @@ public class CameraActivity extends AppCompatActivity {
             animator.addListener(new AnimatorListenerAdapter() {
                 @Override
                 public void onAnimationEnd(Animator animation) {
-                    maskViewflg = 1;
+                    //maskViewflg = 1;
                     SwichCamera(maskView);
                     // Toast.makeText(MainActivity.this, "动画结束", Toast.LENGTH_SHORT).show();
                 }

@@ -9,7 +9,8 @@
         android:id="@+id/texture"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:backgroundTint="#0B0808" />
+        android:backgroundTint="#0B0808"
+        android:layout_marginTop="100dp"/>
 
     <ImageButton
         android:id="@+id/record"
@@ -43,4 +44,35 @@
         android:layout_marginBottom="64dp"
         android:layout_marginStart="100dp"
         android:src="@drawable/switch_camera" />
+
+    <!-- 自己定义的标题栏-->
+    <RelativeLayout
+    android:id="@+id/camera_top"
+    android:layout_width="fill_parent"
+    android:layout_height="100dp"
+    android:background="#00000000" >
+
+<!--        <ImageView-->
+<!--            android:id="@+id/btn_black"-->
+<!--            android:layout_width="wrap_content"-->
+<!--            android:layout_height="fill_parent"-->
+<!--            android:layout_alignParentLeft="true"-->
+<!--            android:paddingBottom="10dp"-->
+<!--            android:paddingLeft="10dp"-->
+<!--            android:paddingTop="10dp"-->
+<!--            android:src="@drawable/ic_launcher_background" />-->
+
+        <ImageButton
+            android:id="@+id/frame_switch"
+            android:layout_width="wrap_content"
+            android:layout_height="fill_parent"
+            android:layout_alignParentRight="true"
+            android:layout_centerVertical="true"
+            android:paddingBottom="10dp"
+            android:paddingRight="10dp"
+            android:paddingTop="10dp"
+            android:focusable="false"
+            android:src="@drawable/frame_switch"/>
+    </RelativeLayout>
+
 </FrameLayout>
