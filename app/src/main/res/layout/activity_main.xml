@@ -16,7 +16,6 @@
         android:id="@+id/mCustomView"
         android:layout_width="match_parent"
         android:layout_height="27dp"
-        android:layout_marginStart="0dp"
         android:layout_marginTop="580dp"
         android:background="#00000000"
         android:orientation="horizontal" />
@@ -25,77 +24,82 @@
         android:id="@+id/record"
         android:layout_width="68dp"
         android:layout_height="66dp"
-        android:layout_gravity="bottom|center"
-        android:layout_marginRight="40dp"
+        android:layout_gravity="bottom|center_horizontal"
         android:layout_marginBottom="64dp"
+        android:layout_marginRight="40dp"
         android:src="@drawable/recordvideo" />
 
     <ImageButton
         android:id="@+id/stop"
         android:layout_width="68dp"
         android:layout_height="66dp"
-        android:layout_gravity="bottom|center"
-        android:layout_marginLeft="30dp"
+        android:layout_gravity="bottom|center_horizontal"
         android:layout_marginBottom="64dp"
+        android:layout_marginLeft="30dp"
         android:src="@drawable/stop" />
 
     <ImageButton
         android:id="@+id/capture"
         android:layout_width="77dp"
         android:layout_height="70dp"
-        android:layout_gravity="bottom|center"
+        android:layout_gravity="bottom|center_horizontal"
         android:layout_marginBottom="64dp"
         android:src="@drawable/capture"
-        android:visibility="gone"/>
+        android:visibility="gone" />
 
     <ImageButton
         android:id="@+id/switch_camera"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom|center"
+        android:layout_gravity="bottom|center_horizontal"
         android:layout_marginBottom="64dp"
         android:layout_marginStart="100dp"
         android:src="@drawable/switch_camera" />
 
-    <!-- 自己定义拍照的标题栏-->
+    <ImageView
+        android:id="@+id/ImageView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="100dp"
+        android:layout_marginStart="-150dp"
+        android:layout_centerInParent="true" />
+
+    <!-- 自己定义拍照的标题栏 -->
     <RelativeLayout
-    android:id="@+id/capture_top"
-    android:layout_width="fill_parent"
-    android:layout_height="100dp"
-    android:background="#00000000"
+        android:id="@+id/capture_top"
+        android:layout_width="match_parent"
+        android:layout_height="100dp"
+        android:background="#00000000"
         android:visibility="gone">
 
         <ImageButton
             android:id="@+id/frame_switch"
             android:layout_width="wrap_content"
-            android:layout_height="fill_parent"
-            android:layout_alignParentRight="true"
+            android:layout_height="match_parent"
+            android:layout_alignParentEnd="true"
             android:layout_centerVertical="true"
-            android:paddingBottom="10dp"
-            android:paddingRight="10dp"
-            android:paddingTop="10dp"
+            android:padding="10dp"
             android:focusable="false"
-            android:src="@drawable/frame_switch"/>
+            android:src="@drawable/frame_switch" />
     </RelativeLayout>
-    <!-- 自己定义的视频标题栏-->
+
+    <!-- 自己定义的视频标题栏 -->
     <RelativeLayout
         android:id="@+id/viode_top"
-        android:layout_width="fill_parent"
+        android:layout_width="match_parent"
         android:layout_height="100dp"
-        android:background="#00000000"
-        >
+        android:background="#00000000">
 
         <ImageButton
             android:id="@+id/void_quality"
             android:layout_width="wrap_content"
-            android:layout_height="fill_parent"
-            android:layout_alignParentRight="true"
+            android:layout_height="match_parent"
+            android:layout_alignParentEnd="true"
             android:layout_centerVertical="true"
-            android:paddingBottom="10dp"
-            android:paddingRight="10dp"
-            android:paddingTop="10dp"
+            android:padding="10dp"
             android:focusable="false"
-            android:src="@drawable/video_quality"/>
+            android:src="@drawable/video_quality" />
     </RelativeLayout>
 
 </FrameLayout>

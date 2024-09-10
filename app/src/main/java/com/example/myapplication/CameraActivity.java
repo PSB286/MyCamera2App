@@ -10,6 +10,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.ImageFormat;
 import android.graphics.Matrix;
@@ -46,6 +48,7 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
@@ -79,6 +82,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     FrameLayout rootLayout;
     //按键定义
     private ImageButton record, stop, switch_camera, capture,switch_frame,void_quality;
+    private ImageView imageView;
     //
     private int initPreviewSize=0;
     // 捕获会话
@@ -95,6 +99,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     // 捕获标志
     private int captureFlag=0;
     private int videoFlags = 0;
+
+
 
     // TextureView的纹理
     SurfaceTexture texture;
@@ -497,6 +503,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         capture = findViewById(R.id.capture);
         switch_frame=findViewById(R.id.frame_switch);
         void_quality=findViewById(R.id.void_quality);
+        imageView=findViewById(R.id.ImageView);
         stop.setEnabled(false);
 
         record.setOnClickListener(v -> {
@@ -656,6 +663,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
     private void openCamera(int width, int height) {
         //setUpCameraOutputs(width, height);
+
         initAutoFitTextureView(textureView,textureView.getWidth(), textureView.getHeight());
         CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
         try {
@@ -685,16 +693,21 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
     private void takePicture() {
         try {
+            // 创建捕获请求
             CaptureRequest.Builder captureBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
+            // 设置预览输出的Surface
             captureBuilder.addTarget(mImageReader.getSurface());
             // 设置自动对焦模式
             captureBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+            // 自动对焦
             captureBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_AUTO);
+            // 自动曝光
             captureBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
-
+            // 设置照片的方向
             int rotation = getWindowManager().getDefaultDisplay().getRotation();
             // 根据设备方向计算设置照片的方向
             captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, ORIENTATIONS.get(rotation));
+            // 捕获一帧图像
             captureSession.capture(captureBuilder.build(), null, null);
 
         } catch (CameraAccessException e) {
@@ -851,7 +864,10 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             FileOutputStream fos = new FileOutputStream(filePath);
             fos.write(data);
             fos.close();
-
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inSampleSize = 2;
+            Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length, options);
+            imageView.setImageBitmap(bitmap);
             MediaScannerConnection.scanFile(this, new String[]{filePath}, null, null);
             sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(new File(filePath))));
             Toast.makeText(this, "图片保存成功", Toast.LENGTH_SHORT).show();
