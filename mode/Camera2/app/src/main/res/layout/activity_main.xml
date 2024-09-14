@@ -1,0 +1,112 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#050505"
+    android:fitsSystemWindows="false">
+
+    <com.psb.myapplication.AutoFitTextureView
+        android:id="@+id/texture"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginTop="100dp"
+        android:backgroundTint="#0B0808" />
+
+    <com.psb.myapplication.CustomViewL
+        android:id="@+id/mCustomView"
+        android:layout_width="match_parent"
+        android:layout_height="30dp"
+        android:layout_marginStart="0dp"
+        android:layout_marginTop="560dp"
+        android:background="#00000000"
+        android:orientation="horizontal" />
+
+    <ImageButton
+        android:id="@+id/record"
+        android:layout_width="68dp"
+        android:layout_height="66dp"
+        android:layout_gravity="bottom|center"
+        android:layout_marginRight="40dp"
+        android:layout_marginBottom="64dp"
+        android:src="@drawable/recordvideo"
+        android:visibility="gone"/>
+
+    <ImageButton
+        android:id="@+id/stop"
+        android:layout_width="68dp"
+        android:layout_height="66dp"
+        android:layout_gravity="bottom|center"
+        android:layout_marginLeft="30dp"
+        android:layout_marginBottom="64dp"
+        android:src="@drawable/stop"
+        android:visibility="gone"/>
+
+    <ImageButton
+        android:id="@+id/capture"
+        android:layout_width="77dp"
+        android:layout_height="70dp"
+        android:layout_gravity="bottom|center"
+        android:layout_marginBottom="64dp"
+        android:src="@drawable/capture"
+        />
+
+    <ImageButton
+        android:id="@+id/switch_camera"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center"
+        android:layout_marginBottom="64dp"
+        android:layout_marginStart="100dp"
+        android:src="@drawable/switch_camera" />
+
+    <ImageView
+        android:id="@+id/thumbnail"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
+        android:layout_marginBottom="64dp"
+        android:layout_marginEnd="100dp"
+        android:scaleType="fitCenter" />
+
+    <!-- 自己定义拍照的标题栏-->
+    <RelativeLayout
+        android:id="@+id/capture_top"
+        android:layout_width="fill_parent"
+        android:layout_height="100dp"
+        android:background="#00000000"
+       >
+
+        <ImageButton
+            android:id="@+id/frame_switch"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:focusable="false"
+            android:paddingTop="10dp"
+            android:paddingRight="10dp"
+            android:paddingBottom="10dp"
+            android:src="@drawable/frame_switch" />
+    </RelativeLayout>
+    <!-- 自己定义的视频标题栏-->
+    <RelativeLayout
+        android:id="@+id/viode_top"
+        android:layout_width="fill_parent"
+        android:layout_height="100dp"
+        android:background="#00000000"
+        android:visibility="gone"
+        >
+
+        <ImageButton
+            android:id="@+id/void_quality"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentRight="true"
+            android:layout_centerVertical="true"
+            android:paddingBottom="10dp"
+            android:paddingRight="10dp"
+            android:paddingTop="10dp"
+            android:focusable="false"
+            android:src="@drawable/video_quality"/>
+    </RelativeLayout>
+
+</FrameLayout>
