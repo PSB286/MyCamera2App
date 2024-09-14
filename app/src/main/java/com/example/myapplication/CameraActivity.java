@@ -219,8 +219,9 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         initClickListener();// 初始化点击监听器
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     private void initCustomViewL() {
-        mCustomViewL.setOnTouchListener((View.OnTouchListener) this); // 直接将 OnTouchListener 应用于 CustomViewL
+        mCustomViewL.setOnTouchListener(this); // 直接将 OnTouchListener 应用于 CustomViewL
         mCustomViewL.addIndicator(name);
         mGestureDetector = new GestureDetector(this, new MyGestureDetectorListener());
     }
@@ -230,22 +231,26 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         private static final int distanceLimit = 50; // 距离阈值
         private static final int velocityThreshold = 500; // 速度阈值
 
+        // 按下
         @Override
         public boolean onDown(MotionEvent e) {
             Log.d("onDown", "MyGestureDetectorListener onDown");
             return true;
         }
 
+        // 长按
         @Override
         public void onShowPress(MotionEvent e) {
             // 不做任何操作
         }
 
+        // 单击
         @Override
         public boolean onSingleTapUp(MotionEvent e) {
             return false;
         }
 
+        // 滑动
         @Override
         public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
             final float deltaX = e2.getX() - e1.getX();
@@ -276,11 +281,12 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             return true;
         }
 
+        // 长按
         @Override
         public void onLongPress(MotionEvent e) {
             // 不做任何操作
         }
-
+        // 快速滑动
         @Override
         public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
             return true;
