@@ -136,32 +136,34 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     private MediaRecorder mMediaRecorder;
     String recorderPath;
 
+    // 摄像头状态回调
     private final CameraDevice.StateCallback stateCallback = new CameraDevice.StateCallback() {
-        //  摄像头被打开时激发该方法
-        @Override
-        public void onOpened(@NonNull CameraDevice cameraDevice) {
-            CameraActivity.this.mCameraDevice = cameraDevice;
-            Toast.makeText(CameraActivity.this, "摄像头已打开", Toast.LENGTH_SHORT).show();
-            // 开始预览
-            createCaptureSession(cameraDevice);
-        }
+            //  摄像头被打开时激发该方法
+            @Override
+            public void onOpened(@NonNull CameraDevice cameraDevice) {
+                CameraActivity.this.mCameraDevice = cameraDevice;
+                Toast.makeText(CameraActivity.this, "摄像头已打开", Toast.LENGTH_SHORT).show();
+                // 开始预览
+                createCaptureSession(cameraDevice);
+            }
 
-        // 摄像头断开连接时激发该方法
-        @Override
-        public void onDisconnected(CameraDevice cameraDevice) {
-            cameraDevice.close();
-            CameraActivity.this.mCameraDevice = null;
-        }
+            // 摄像头断开连接时激发该方法
+            @Override
+            public void onDisconnected(CameraDevice cameraDevice) {
+                cameraDevice.close();
+                CameraActivity.this.mCameraDevice = null;
+            }
 
-        // 打开摄像头出现错误时激发该方法
-        @Override
-        public void onError(CameraDevice cameraDevice, int error) {
-            cameraDevice.close();
-            CameraActivity.this.mCameraDevice = null;
-            CameraActivity.this.finish();
-        }
+            // 打开摄像头出现错误时激发该方法
+            @Override
+            public void onError(CameraDevice cameraDevice, int error) {
+                cameraDevice.close();
+                CameraActivity.this.mCameraDevice = null;
+                CameraActivity.this.finish();
+            }
     };
 
+    // TextureView的监听器
     private final TextureView.SurfaceTextureListener mSurfaceTextureListener
             = new TextureView.SurfaceTextureListener() {
         @Override
@@ -258,23 +260,11 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
             if (Math.abs(deltaY) < Math.abs(deltaX)) { // 确保水平滑动
                 if (deltaX > distanceLimit) {
-                    Log.d("滑动", "向右滑");
-                    if(mCustomViewL.scrollRight()&&layoutFlag==1)
-                    {
-                        Layout_Switch(0);
+                        Layout_Switch(mCustomViewL.getIndex());
                         Log.d("切换", "切换到布局1"+mCustomViewL.scrollRight());
-                        layoutFlag=0;
-                    }
-
-
                 } else if (deltaX < -distanceLimit) {
-                    Log.d("滑动1", "向左滑");
-                    if(!mCustomViewL.scrollLeft()&&layoutFlag==0)
-                    {
-                        Layout_Switch(1);
+                        Layout_Switch(mCustomViewL.getIndex());
                         Log.d("切换", "切换到布局2"+mCustomViewL.scrollLeft());
-                        layoutFlag = 1;
-                    }
                 }
             }
 
@@ -339,6 +329,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     }
 
     private void Layout_Switch(int i) {
+        Log.d("Layout_Switch", "Layout_Switch："+i);
         record.setVisibility(View.GONE);
         stop.setVisibility(View.GONE);
         capture.setVisibility(View.GONE);
@@ -346,28 +337,19 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         findViewById(R.id.viode_top).setVisibility(View.GONE);
         if(i==1)
         {
-            captureFlag=0;
+
             capture.setVisibility(View.VISIBLE);
             findViewById(R.id.capture_top).setVisibility(View.VISIBLE);
-            previewSize=previewSize_capturebuff;
-            openCamera(textureView.getWidth(),textureView.getHeight());
+            //previewSize=previewSize_capturebuff;
+           // openCamera(textureView.getWidth(),textureView.getHeight());
         }
         else {
-            captureFlag=1;
+
             record.setVisibility(View.VISIBLE);
             stop.setVisibility(View.VISIBLE);
             findViewById(R.id.viode_top).setVisibility(View.VISIBLE);
-            if(videoFlags==0) {
-                videoFlags=1;
-                previewSize = new Size(1280, 720);
-                openCamera(textureView.getWidth(), textureView.getHeight());
-               // previewSize_videobuff=previewSize;
-
-            }
-            else {
-                previewSize = previewSize_videobuff;
-                openCamera(textureView.getWidth(), textureView.getHeight());
-            }
+                //previewSize = new Size(1280, 720);
+               // openCamera(textureView.getWidth(), textureView.getHeight());
         }
     }
 
@@ -397,15 +379,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 Log.d("xxx", "--initAutoFitTextureView--");
                 initPreviewSize=1;
             }
-            if(captureFlag==0) {
-                previewSize_capturebuff = previewSize;
-            }
-            if(videoFlags==1&&captureFlag==1)
-            {
-                previewSize_videobuff = previewSize;
-            }
             Toast.makeText(CameraActivity.this, "高"+previewSize.getHeight()+"宽"+previewSize.getWidth(), Toast.LENGTH_SHORT).show();
-            //previewSize=new Size(1600,720);
+            previewSize=new Size(1600,720);
             //textureView.setLayoutParams(new ViewGroup.LayoutParams(previewSize.getWidth(), previewSize.getHeight()));
             Position_frame(previewSize);
 
@@ -420,9 +395,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             } else {
                 textureView.setAspectRatio(previewSize.getHeight(), previewSize.getWidth());
             }
-
             //previewSize=new Size(2944,2944);
-
 
         } catch (CameraAccessException e) {
             e.printStackTrace();
@@ -695,8 +668,6 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
     }
 
-
-
     private void takePicture() {
         try {
             // 创建捕获请求
@@ -728,6 +699,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             // 更新预览请求
             CaptureRequest.Builder recordRequestBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_RECORD);
             recordRequestBuilder.addTarget(mMediaRecorder.getSurface());
+
             texture.setDefaultBufferSize(previewSize.getWidth(), previewSize.getHeight());
             Surface previewSurface = new Surface(texture);
             recordRequestBuilder.addTarget(previewSurface); // 保留预览Surface
@@ -817,6 +789,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     }
 
     private void createCaptureSession(CameraDevice cameraDevice) {
+
         // 预览Surface
         texture = textureView.getSurfaceTexture();
         assert texture != null;
@@ -828,7 +801,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         mImageReader = ImageReader.newInstance(previewSize.getWidth(), previewSize.getHeight(), ImageFormat.JPEG, 1);
         mImageReader.setOnImageAvailableListener(mImageReaderListener, null);
         surfaces.add(mImageReader.getSurface());
-//
+
         //添加录制Surface
         initRecording();
         surfaces.add(mMediaRecorder.getSurface());
@@ -844,14 +817,12 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                         // 创建预览请求
                         CaptureRequest.Builder previewRequestBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
                         previewRequestBuilder.addTarget(previewSurface); // 设置预览目标Surface
-
                         // 开启连续预览
                         captureSession.setRepeatingRequest(previewRequestBuilder.build(), null, null);
                     } catch (CameraAccessException e) {
                         e.printStackTrace();
                     }
                 }
-
                 @Override
                 public void onConfigureFailed(@NonNull CameraCaptureSession session) {
                     // 预览会话创建失败
@@ -888,7 +859,6 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         if (!recorderFile.exists()) {
             recorderFile.mkdirs();
         }
-
         // 生成记录视频的文件路径，包括时间戳和.mp4后缀
         recorderPath = recorderFile.getAbsolutePath() + "/" + System.currentTimeMillis() + ".mp4";
         // 记录日志，用于调试确认视频文件路径
@@ -903,16 +873,12 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         mMediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
         // 设置输出文件路径
         mMediaRecorder.setOutputFile(recorderPath);
-
-
         // 设置视频编码比特率为10 Mbps，提供较好的视频质量
         mMediaRecorder.setVideoEncodingBitRate(10000000);
         // 设置视频帧率为30帧/秒，以保证视频流畅性
         mMediaRecorder.setVideoFrameRate(30);
         // 根据相机预览尺寸设置视频分辨率
         mMediaRecorder.setVideoSize(1280, 720);
-
-
         // 设置视频编码格式为H.264，提供较好的压缩效率
         mMediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
         // 设置音频编码格式为AAC，提供较好的音频质量
