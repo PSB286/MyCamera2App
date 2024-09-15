@@ -29,6 +29,8 @@ import android.util.Size;
 import android.view.OrientationEventListener;
 import android.view.Surface;
 import android.view.SurfaceHolder;
+import android.widget.Toast;
+import android.hardware.camera2.CaptureRequest;
 
 import androidx.annotation.NonNull;
 
@@ -37,6 +39,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 
 public class Camera2Proxy {
 
@@ -65,8 +68,8 @@ public class Camera2Proxy {
     /* 缩放相关 */
     private final int MAX_ZOOM = 200; // 放大的最大值，用于计算每次放大/缩小操作改变的大小
     private int mZoom = 0; // 0~mMaxZoom之间变化
-    private float mStepWidth; // 每次改变的宽度大小
-    private float mStepHeight; // 每次改变的高度大小
+    private float mStepWidth=30; // 每次改变的宽度大小
+    private float mStepHeight=30; // 每次改变的高度大小
 
     /**
      * 打开摄像头的回调
@@ -117,6 +120,7 @@ public class Camera2Proxy {
         try {
             mCameraCharacteristics = mCameraManager.getCameraCharacteristics(Integer.toString(mCameraId));
             StreamConfigurationMap map = mCameraCharacteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+            assert map != null;
             Size[] supportPictureSizes = map.getOutputSizes(ImageFormat.JPEG);
             Size pictureSize = Collections.max(Arrays.asList(supportPictureSizes), new CompareSizesByArea());
             float aspectRatio = pictureSize.getHeight() * 1.0f / pictureSize.getWidth();
@@ -387,28 +391,47 @@ public class Camera2Proxy {
         openCamera();
     }
     // 处理缩放
-    public void handleZoom(boolean isZoomIn) {
+    public void handleZoom(boolean isZoomIn,CameraDevice mCameraDevice,CameraCharacteristics mCameraCharacteristics,CaptureRequest.Builder mPreviewRequestBuilder) {
         if (mCameraDevice == null || mCameraCharacteristics == null || mPreviewRequestBuilder == null) {
             return;
         }
-        if (isZoomIn && mZoom < MAX_ZOOM) { // 放大
+
+       // Toast.makeText(mActivity, "进入缩放", Toast.LENGTH_SHORT).show();
+        Log.d("handleZoom", "handleZoom: " + isZoomIn);
+        if (isZoomIn && (mZoom < MAX_ZOOM)) { // 放大
+            //Toast.makeText(mActivity, "放大", Toast.LENGTH_SHORT).show();
+            Log.d("handleZoom", "放大");
             mZoom++;
         } else if (mZoom > 0) { // 缩小
+            //Toast.makeText(mActivity, "缩小", Toast.LENGTH_SHORT).show();
+            Log.d("handleZoom", "缩小");
             mZoom--;
         }
-        Log.v(TAG, "handleZoom: mZoom: " + mZoom);
+
+        Log.d("handleZoom", "handleZoom: mZoom: " + mZoom);
+
+        // 获取当前 crop 区域
         Rect rect = mCameraCharacteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE);
+        Log.d("handleZoom", "rect: " + rect);
+
+
         int cropW = (int) (mStepWidth * mZoom);
         int cropH = (int) (mStepHeight * mZoom);
+        Log.d("handleZoom", "cropW: " + cropW + ", cropH: " + cropH);
+        // 计算出裁剪区域
         Rect zoomRect = new Rect(rect.left + cropW, rect.top + cropH, rect.right - cropW, rect.bottom - cropH);
-        Log.d(TAG, "zoomRect: " + zoomRect);
+
+        Log.d("handleZoom", "zoomRect: " + zoomRect);
+        // 设置裁剪区域
         mPreviewRequestBuilder.set(CaptureRequest.SCALER_CROP_REGION, zoomRect);
+
         startPreview(); // 需要重新 start preview 才能生效
     }
     // 对焦
-    public void triggerFocusAtPoint(float x, float y, int width, int height,CaptureRequest.Builder PreviewRequestBuilder,CameraCaptureSession mCaptureSession) {
+    public void triggerFocusAtPoint(float x, float y, int width, int height,CaptureRequest.Builder PreviewRequestBuilder,CameraCaptureSession CaptureSession) {
         Log.d(TAG, "triggerFocusAtPoint (" + x + ", " + y + ")");
         mPreviewRequestBuilder=PreviewRequestBuilder;
+        mCaptureSession=CaptureSession;
         // 计算出在屏幕坐标系下的区域
         Rect cropRegion = mPreviewRequestBuilder.get(CaptureRequest.SCALER_CROP_REGION);
         // 计算出在传感器坐标系下的区域
@@ -425,6 +448,7 @@ public class Camera2Proxy {
         mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_START);
         // 开始预取
         mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER, CameraMetadata.CONTROL_AE_PRECAPTURE_TRIGGER_START);
+
         try {
             // 发送对焦请求
             mCaptureSession.capture(mPreviewRequestBuilder.build(), mAfCaptureCallback, mBackgroundHandler);
@@ -469,30 +493,78 @@ public class Camera2Proxy {
     // 对焦回调
     private final CameraCaptureSession.CaptureCallback mAfCaptureCallback = new CameraCaptureSession.CaptureCallback() {
 
-        private void process(CaptureResult result) {
-            Integer state = result.get(CaptureResult.CONTROL_AF_STATE);
-            Log.d(TAG, "CONTROL_AF_STATE: " + state);
-            if (state == CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED || state == CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED) {
-                Log.d(TAG, "process: start normal preview");
-                mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_CANCEL);
+        private void process(CaptureResult result) throws CameraAccessException {
+            // 确保 result 不为 null
+//            if (result == null) {
+//                Log.e(TAG, "CaptureResult is null");
+//                Toast.makeText(mActivity, "Result is null", Toast.LENGTH_SHORT).show();
+//                return;
+//            }
+//            // 获取焦点状态
+//            Integer state = result.get(CaptureResult.CONTROL_AF_STATE);
+//            if (state == null) {
+//                Log.e(TAG, "STATE is null");
+//                Toast.makeText(mActivity, "STATE is null", Toast.LENGTH_SHORT).show();
+//                return;
+//            }
+//            Log.d(TAG, "CONTROL_AF_STATE: " + state);
+//
+//            // 显示进入 Process 的提示
+//            Toast.makeText(mActivity, "进入Process", Toast.LENGTH_SHORT).show();
+
+            // 检查焦点状态
+            //if (Objects.equals(state, CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED)
+                    //|| Objects.equals(state, CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED)) {
+               // Toast.makeText(mActivity, "对焦成功", Toast.LENGTH_SHORT).show();
+                // 设置相关参数
+                mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CaptureRequest.CONTROL_AF_TRIGGER_CANCEL);
+                // 设置对焦模式
                 mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
-                mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.FLASH_MODE_OFF);
+                // 关闭自动曝光
+               // mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF);
+                // 启动预览
                 startPreview();
-            }
+          // } else {
+                // 对焦失败，记录日志并提示用户
+                //Log.w(TAG, "对焦失败，状态：" + state);
+             //   Toast.makeText(mActivity, "对焦失败，请调整相机位置或光线", Toast.LENGTH_SHORT).show();
+                // 尝试重新对焦
+                //retryAutoFocus();
+          //  }
         }
+
+        private void retryAutoFocus() throws CameraAccessException {
+            // 重新触发自动对焦
+            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CaptureRequest.CONTROL_AF_TRIGGER_START);
+            // 提交新的请求
+            //mCaptureSession.setRepeatingRequest(mPreviewRequestBuilder.build(), this, null);
+            mCaptureSession.capture(mPreviewRequestBuilder.build(), mAfCaptureCallback, mBackgroundHandler);
+        }
+
         // ae
         @Override
         public void onCaptureProgressed(@NonNull CameraCaptureSession session,
                                         @NonNull CaptureRequest request,
                                         @NonNull CaptureResult partialResult) {
-            process(partialResult);
+            //Toast.makeText(mActivity, "--onCaptureProgressed--", Toast.LENGTH_SHORT).show();
+            try {
+                process(partialResult);
+            } catch (CameraAccessException e) {
+                throw new RuntimeException(e);
+            }
         }
+
         // ae
         @Override
         public void onCaptureCompleted(@NonNull CameraCaptureSession session,
                                        @NonNull CaptureRequest request,
                                        @NonNull TotalCaptureResult result) {
-            process(result);
+            //Toast.makeText(mActivity, "--onCaptureCompleted--", Toast.LENGTH_SHORT).show();
+            try {
+                process(result);
+            } catch (CameraAccessException e) {
+                throw new RuntimeException(e);
+            }
         }
     };
 

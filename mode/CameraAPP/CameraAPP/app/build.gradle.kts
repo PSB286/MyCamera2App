@@ -3,12 +3,12 @@ plugins {
 }
 
 android {
-    namespace = "com.psb.myapplication"
+    namespace = "com.example.cameraapp"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.psb.myapplication"
-        minSdk = 31
+        applicationId = "com.example.cameraapp"
+        minSdk = 24
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
@@ -40,5 +40,6 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
-    implementation(libs.camera.camera2)
 }
+
+task("testClasses")

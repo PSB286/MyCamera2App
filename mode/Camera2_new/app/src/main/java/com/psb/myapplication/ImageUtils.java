@@ -20,6 +20,7 @@ public class ImageUtils {
 
     private static final String TAG = "ImageUtils";
     private static Context sContext = MyApp.getInstance();
+    private static MyApp myApp;
 
     private static final String GALLERY_PATH = Environment.getExternalStoragePublicDirectory(Environment
             .DIRECTORY_DCIM) + File.separator + "Camera";
@@ -107,18 +108,22 @@ public class ImageUtils {
         resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
     }
 
-    public static Bitmap getLatestThumbBitmap() {
+    public static Bitmap getLatestThumbBitmap( Context sContext) {
         Bitmap bitmap = null;
-        // 按照时间顺序降序查询
-        Cursor cursor = MediaStore.Images.Media.query(sContext.getContentResolver(), MediaStore.Images.Media
-                .EXTERNAL_CONTENT_URI, STORE_IMAGES, null, null, MediaStore.Files.FileColumns.DATE_MODIFIED + " DESC");
+       //  按照时间顺序降序查询
+        Cursor cursor = MediaStore.Images.Media.query(sContext.getContentResolver(), MediaStore.Images.Media.EXTERNAL_CONTENT_URI, STORE_IMAGES, null, null, MediaStore.Files.FileColumns.DATE_MODIFIED + " DESC");
+        // 获取第一张图片
         boolean first = cursor.moveToFirst();
+        Log.d("Bitmap", "getLatestThumbBitmap: " + first);
         if (first) {
+            // 获取图片id
             long id = cursor.getLong(0);
+            // 获取缩略图
             bitmap = MediaStore.Images.Thumbnails.getThumbnail(sContext.getContentResolver(), id, MediaStore.Images
                     .Thumbnails.MICRO_KIND, null);
-            Log.d(TAG, "bitmap width: " + bitmap.getWidth());
-            Log.d(TAG, "bitmap height: " + bitmap.getHeight());
+            // 打印图片宽高
+            Log.d("Bitmap", "bitmap width: " + bitmap.getWidth());
+            Log.d("Bitmap", "bitmap height: " + bitmap.getHeight());
         }
         cursor.close();
         return bitmap;

@@ -6,6 +6,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
 import android.graphics.Matrix;
 import android.graphics.RectF;
@@ -16,12 +18,14 @@ import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CaptureRequest;
+import android.hardware.camera2.CaptureResult;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
 import android.media.MediaRecorder;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -29,6 +33,7 @@ import android.os.Looper;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.Size;
+import android.util.SparseIntArray;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.Surface;
@@ -84,6 +89,9 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     private Camera2Proxy mCameraProxy;
     private float mOldDistance;
     CaptureRequest.Builder previewRequestBuilder;
+    CameraCharacteristics characteristics;
+    private static MyApp app;
+
 
     @SuppressLint("MissingInflatedId")
     @Override
@@ -113,17 +121,17 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 switch (event.getAction() & MotionEvent.ACTION_MASK) {
                     // 双指按下
                     case MotionEvent.ACTION_POINTER_DOWN:
-                       // Toast.makeText(getApplicationContext(), "双指按下", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getApplicationContext(), "双指按下", Toast.LENGTH_SHORT).show();
                         mOldDistance = getFingerSpacing(event);
                         break;
                     // 双指移动
                     case MotionEvent.ACTION_MOVE:
-                        // Toast.makeText(getApplicationContext(), "双指移动", Toast.LENGTH_SHORT).show();
+                         Toast.makeText(getApplicationContext(), "双指移动", Toast.LENGTH_SHORT).show();
                         float newDistance = getFingerSpacing(event);
                         if (newDistance > mOldDistance) {
-                            mCameraProxy.handleZoom(true);
+                            mCameraProxy.handleZoom(true,mCameraDevice,characteristics,previewRequestBuilder);
                         } else if (newDistance < mOldDistance) {
-                            mCameraProxy.handleZoom(false);
+                            mCameraProxy.handleZoom(false,mCameraDevice,characteristics,previewRequestBuilder);
                         }
                         mOldDistance = newDistance;
                         break;
@@ -160,42 +168,12 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     }
 
 
-//    @Override
-//    public boolean onTouchEvent(MotionEvent event) {
-//        if (event.getPointerCount() == 1) {
-//            // 点击对焦
-//            //mCameraProxy.triggerFocusAtPoint((int) event.getX(), (int) event.getY(), previewSize.getWidth(), previewSize.getHeight());
-//            Toast.makeText(this, "点击对焦", Toast.LENGTH_SHORT).show();
-//            return true;
-//        }
-//        // 双指缩放
-//        switch (event.getAction() & MotionEvent.ACTION_MASK) {
-//            case MotionEvent.ACTION_POINTER_DOWN:
-//                mOldDistance = getFingerSpacing(event);
-//                break;
-//            case MotionEvent.ACTION_MOVE:
-//                float newDistance = getFingerSpacing(event);
-//                if (newDistance > mOldDistance) {
-//                    mCameraProxy.handleZoom(true);
-//                } else if (newDistance < mOldDistance) {
-//                    mCameraProxy.handleZoom(false);
-//                }
-//                mOldDistance = newDistance;
-//                break;
-//            default:
-//                break;
-//        }
-//        // 返回true，表示自己处理触摸事件
-//        return super.onTouchEvent(event);
-//    }
-
     // 计算两点之间的距离
     private static float getFingerSpacing(MotionEvent event) {
         float x = event.getX(0) - event.getX(1);
         float y = event.getY(0) - event.getY(1);
         return (float) Math.sqrt(x * x + y * y);
     }
-
 
     /*
     初始化函数
@@ -252,8 +230,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         // 显示最近
         mPictureIv = findViewById(R.id.picture_iv);
         // 显示最近一次拍照的图片
-        //mPictureIv.setImageBitmap(ImageUtils.getLatestThumbBitmap());
-
+        mPictureIv.setImageBitmap(ImageUtils.getLatestThumbBitmap(this));
 
     }
 
@@ -275,8 +252,12 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         requestPermissions(new String[]{
                 android.Manifest.permission.CAMERA,
                 android.Manifest.permission.RECORD_AUDIO,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE
+                android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                android.Manifest.permission.READ_EXTERNAL_STORAGE,
+                android.Manifest.permission.RECORD_AUDIO,
+                android.Manifest.permission.MODIFY_AUDIO_SETTINGS
         }, 0x123);
+
     }
 
 
@@ -312,8 +293,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
         capture.setOnClickListener(v -> {
             if (v.getId() == R.id.capture) {
-                //Toast.makeText(CameraActivity.this, "点击了拍照按钮", Toast.LENGTH_SHORT).show();
-                //takePicture();
+                Toast.makeText(CameraActivity.this, "点击了拍照按钮", Toast.LENGTH_SHORT).show();
+                takePicture(reader -> new ImageSaveTask().execute(reader.acquireNextImage()));
             }
         });
 
@@ -338,14 +319,78 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             }
         });
 
-
-
     }
+    // 异步保存图片
+    private class ImageSaveTask extends AsyncTask<Image, Void, Bitmap> {
+
+        @Override
+        protected Bitmap doInBackground(Image ... images) {
+            ByteBuffer buffer = images[0].getPlanes()[0].getBuffer();
+            byte[] bytes = new byte[buffer.remaining()];
+            buffer.get(bytes);
+            if (mCameraProxy.isFrontCamera()) {
+                Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+                // 前置摄像头需要左右镜像
+                Bitmap rotateBitmap = ImageUtils.rotateBitmap(bitmap, 0, true, true);
+                ImageUtils.saveBitmap(rotateBitmap);
+                rotateBitmap.recycle();
+            } else {
+                ImageUtils.saveImage(bytes);
+            }
+            images[0].close();
+            return ImageUtils.getLatestThumbBitmap();
+        }
+
+        @Override
+        protected void onPostExecute(Bitmap bitmap) {
+            mPictureIv.setImageBitmap(bitmap);
+        }
+    }
+
+    // 方向
+    private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
+
+    static {
+        ORIENTATIONS.append(Surface.ROTATION_0, 90);
+        ORIENTATIONS.append(Surface.ROTATION_90, 0);
+        ORIENTATIONS.append(Surface.ROTATION_180, 270);
+        ORIENTATIONS.append(Surface.ROTATION_270, 180);
+    }
+    // 拍照
+    private void takePicture(ImageReader.OnImageAvailableListener onImageAvailableListener) {
+        try {
+
+            mImageReader.setOnImageAvailableListener(onImageAvailableListener, null);
+            // 创建捕获请求
+            CaptureRequest.Builder captureBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
+            // 设置预览输出的Surface
+            captureBuilder.addTarget(mImageReader.getSurface());
+            // 设置自动对焦模式
+            captureBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+            // 自动对焦
+            captureBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_AUTO);
+            // 自动曝光
+            captureBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
+            // 设置照片的方向
+            int rotation = getWindowManager().getDefaultDisplay().getRotation();
+            // 根据设备方向计算设置照片的方向
+            captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, ORIENTATIONS.get(rotation));
+            // 捕获一帧图像
+            captureSession.capture(captureBuilder.build(), null, null);
+
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+
+
 
     /*
     滑动事件及回调函数
     */
-    private class MyGestureDetectorListener implements GestureDetector.OnGestureListener {
+    private static class MyGestureDetectorListener implements GestureDetector.OnGestureListener {
 
         @Override
         public boolean onDown(MotionEvent e) {
@@ -454,7 +499,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
         try {
             // 获取指定摄像头的特性
-            CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraId);
+             characteristics = manager.getCameraCharacteristics(cameraId);
             // 获取摄像头支持的配置属性
             StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
             // 获取摄像头支持的最大尺寸
@@ -581,12 +626,16 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         handler.post(new Runnable() {
             @Override
             public void run() {
-                createCaptureSession(cameraDevice);
+                try {
+                    createCaptureSession(cameraDevice);
+                } catch (CameraAccessException e) {
+                    throw new RuntimeException(e);
+                }
             }
         });
     }
 
-    private void createCaptureSession(CameraDevice cameraDevice) {
+    private void createCaptureSession(CameraDevice cameraDevice) throws CameraAccessException {
         // 预览Surface
         texture = mTextureView.getSurfaceTexture();
         assert texture != null;
@@ -604,6 +653,16 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         initRecording();// 初始化录制
         surfaces.add(mMediaRecorder.getSurface());
 
+
+        // 创建预览请求
+        previewRequestBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
+        // 设置预览目标Surface
+        previewRequestBuilder.addTarget(previewSurface);
+        // 设置自动对焦模式
+        previewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+        // 设置自动曝光模式
+        previewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
+
         try {
             cameraDevice.createCaptureSession(surfaces, new CameraCaptureSession.StateCallback() {
                 // 预览会话已创建
@@ -612,10 +671,6 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                     try {
                         // 预览会话已创建成功，可以开始预览
                         captureSession = session;
-
-                        // 创建预览请求
-                        previewRequestBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
-                        previewRequestBuilder.addTarget(previewSurface); // 设置预览目标Surface
 
                         // 开启连续预览
                         captureSession.setRepeatingRequest(previewRequestBuilder.build(), null, null);
@@ -648,11 +703,18 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         String filePath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).getAbsolutePath() + File.separator + fileName;
 
         try {
+            // 创建文件输出流
             FileOutputStream fos = new FileOutputStream(filePath);
+            // 写入数据
             fos.write(data);
+            // 关闭输出流
             fos.close();
+            // 刷新媒体库
             MediaScannerConnection.scanFile(this, new String[]{filePath}, null, null);
+            // 发送广播通知媒体库更新
             sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(new File(filePath))));
+            // 显示最近一次拍照的图片
+            mPictureIv.setImageBitmap(ImageUtils.getLatestThumbBitmap(this));
         } catch (IOException e) {
             e.printStackTrace();
         }
