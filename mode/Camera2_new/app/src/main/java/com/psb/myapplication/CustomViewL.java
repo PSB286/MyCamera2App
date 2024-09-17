@@ -117,7 +117,12 @@ public class CustomViewL extends LinearLayout {
             // 设置文字
             textView.setText(names[i]);
             // 设置文字颜色
-            textView.setTextColor(Color.WHITE);
+            if(i==0) {
+                textView.setTextColor(Color.YELLOW);
+            }
+            else {
+                textView.setTextColor(Color.WHITE);
+            }
             // 设置文字行数
             textView.setLines(1);
             // 设置 TextView 的 gravity 为 center

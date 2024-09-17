@@ -1,6 +1,9 @@
 package com.psb.myapplication;
 
 import android.Manifest;
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
@@ -8,6 +11,7 @@ import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.graphics.ImageFormat;
 import android.graphics.Matrix;
 import android.graphics.RectF;
@@ -34,6 +38,7 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.Size;
 import android.util.SparseIntArray;
+import android.util.TypedValue;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.Surface;
@@ -42,6 +47,7 @@ import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
@@ -73,7 +79,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     private GestureDetector mGestureDetector = null;
     private DisplayMetrics mDisplayMetrics = null;
     //按键定义
-    private ImageView record, stop, switch_camera, capture, switch_frame, void_quality,mPictureIv;
+    private ImageView record, stop, switch_camera, capture,mPictureIv;
+    private TextView switch_frame,void_quality;
     private int screenWidth = 0;
     private int screenHeight = 0;
     private String cameraId = "0";
@@ -91,6 +98,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     CaptureRequest.Builder previewRequestBuilder;
     CameraCharacteristics characteristics;
     private static MyApp app;
+    public Context mContext;
 
 
     @SuppressLint("MissingInflatedId")
@@ -231,6 +239,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         mPictureIv = findViewById(R.id.picture_iv);
         // 显示最近一次拍照的图片
         mPictureIv.setImageBitmap(ImageUtils.getLatestThumbBitmap(this));
+        mContext=this;
 
     }
 
@@ -286,7 +295,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         switch_camera.setOnClickListener(v -> {
             if (v.getId() == R.id.switch_camera) {
                 //Toast.makeText(CameraActivity.this, "点击了切换摄像头按钮", Toast.LENGTH_SHORT).show();
-                //switchCameraWithMaskAnimation();
+                switchCameraWithMaskAnimation();
                 //SwichCamera();
             }
         });
@@ -294,7 +303,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         capture.setOnClickListener(v -> {
             if (v.getId() == R.id.capture) {
                 Toast.makeText(CameraActivity.this, "点击了拍照按钮", Toast.LENGTH_SHORT).show();
-                takePicture(reader -> new ImageSaveTask().execute(reader.acquireNextImage()));
+                //takePicture(reader -> new ImageSaveTask().execute(reader.acquireNextImage()));
+                takePicture();
             }
         });
 
@@ -320,6 +330,80 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         });
 
     }
+
+
+    private void switchCameraWithMaskAnimation() {
+        if (mCameraDevice != null) {
+            // 创建一个蒙版视图
+            View maskView = new View(this);
+            maskView.setBackgroundColor(Color.BLACK); // 设置背景色为黑色
+            maskView.setAlpha(0f); // 初始透明度为0
+
+            int width =previewSize.getWidth();
+            int height =previewSize.getHeight();
+
+            // 设置蒙版视图的布局参数
+            FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(width, height);
+            params.topMargin = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 100, getResources().getDisplayMetrics());
+
+            mRootLayout.addView(maskView, params);
+
+            // 添加动画效果
+            ValueAnimator animator = ValueAnimator.ofFloat(0f, 1f);
+            animator.setDuration(150); // 动画持续时间
+            animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                @Override
+                public void onAnimationUpdate(ValueAnimator animation) {
+                    float alpha = (float) animation.getAnimatedValue();
+                    maskView.setAlpha(alpha);
+                }
+            });
+            animator.start();
+            // 在动画结束后关闭相机
+            animator.addListener(new AnimatorListenerAdapter() {
+                @Override
+                public void onAnimationEnd(Animator animation) {
+                    //maskViewflg = 1;
+                    SwichCamera(maskView);
+                    // Toast.makeText(MainActivity.this, "动画结束", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+    }
+
+    private void SwichCamera(View maskView ) {
+        // 切换摄像头
+        closeCamera();
+        cameraId = "1".equals(cameraId) ? "0" : "1";
+        // 清空 surfaces 集合
+        surfaces.clear();
+        openCamera(mTextureView.getWidth(), mTextureView.getHeight());
+        //开启一个新的线线程实现移除蒙版，并且延迟600毫秒，等待摄像头切换成功
+        // 创建 Handler
+        Handler handler = new Handler();
+        // 创建 Runnable
+        Runnable removeMaskRunnable = new Runnable() {
+            @Override
+            public void run() {
+                mRootLayout.removeView(maskView); // 移除蒙版视图
+            }
+        };
+
+
+// 执行延迟任务
+        handler.postDelayed(removeMaskRunnable, 650); // 延迟 1000 毫秒（1 秒）
+    }
+
+
+    private void closeCamera() {
+        if (mCameraDevice != null) {
+            mCameraDevice.close();
+            mCameraDevice = null;
+        }
+
+    }
+
+
     // 异步保存图片
     private class ImageSaveTask extends AsyncTask<Image, Void, Bitmap> {
 
@@ -338,7 +422,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 ImageUtils.saveImage(bytes);
             }
             images[0].close();
-            return ImageUtils.getLatestThumbBitmap();
+            return ImageUtils.getLatestThumbBitmap(mContext);
         }
 
         @Override
@@ -361,6 +445,32 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         try {
 
             mImageReader.setOnImageAvailableListener(onImageAvailableListener, null);
+            // 创建捕获请求
+            CaptureRequest.Builder captureBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
+            // 设置预览输出的Surface
+            captureBuilder.addTarget(mImageReader.getSurface());
+            // 设置自动对焦模式
+            captureBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+            // 自动对焦
+            captureBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_AUTO);
+            // 自动曝光
+            captureBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
+            // 设置照片的方向
+            int rotation = getWindowManager().getDefaultDisplay().getRotation();
+            // 根据设备方向计算设置照片的方向
+            captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, ORIENTATIONS.get(rotation));
+            // 捕获一帧图像
+            captureSession.capture(captureBuilder.build(), null, null);
+
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void takePicture() {
+        try {
+
+           // mImageReader.setOnImageAvailableListener(onImageAvailableListener, null);
             // 创建捕获请求
             CaptureRequest.Builder captureBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
             // 设置预览输出的Surface

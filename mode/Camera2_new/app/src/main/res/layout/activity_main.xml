@@ -93,30 +93,68 @@
             android:layout_height="match_parent"
             android:orientation="horizontal"
             android:padding="20dp">
-        <ImageView
-            android:id="@+id/frame_switch"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_centerInParent="true"
-            android:focusable="false"
-            android:paddingTop="10dp"
-            android:paddingRight="10dp"
-            android:paddingBottom="10dp"
-            android:src="@drawable/frame_switch"
-            tools:ignore="SpeakableTextPresentCheck" />
+<!--        <ImageView-->
+<!--            android:id="@+id/frame_switch"-->
+<!--            android:layout_width="wrap_content"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:layout_centerInParent="true"-->
+<!--            android:focusable="false"-->
+<!--            android:paddingTop="10dp"-->
+<!--            android:paddingRight="10dp"-->
+<!--            android:paddingBottom="10dp"-->
+<!--            android:src="@drawable/frame_switch"-->
+<!--            tools:ignore="SpeakableTextPresentCheck" />-->
+            <TextView
+                android:id="@+id/frame_switch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@android:color/white"
+                android:paddingTop="20dp"
+                android:paddingEnd="10dp"
+                android:paddingBottom="10dp"
+                android:text="4:3"
+                android:textSize="25sp"
+                android:gravity="right|center"
+                tools:ignore="RtlSymmetry" />
 
-        <ImageButton
-            android:id="@+id/void_quality"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_alignParentRight="true"
-            android:layout_centerVertical="true"
-            android:paddingBottom="10dp"
-            android:paddingRight="10dp"
-            android:paddingTop="10dp"
-            android:focusable="false"
-            android:visibility="gone"
-            android:src="@drawable/video_quality"/>
+            <TextView
+                android:id="@+id/void_quality"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@android:color/white"
+                android:text="720P"
+                android:visibility="gone"
+                android:textSize="25sp"
+                android:gravity="right|center"
+                tools:ignore="RtlSymmetry"
+                android:paddingTop="20dp"
+                android:paddingEnd="10dp"
+                android:paddingBottom="10dp"
+                />
+
+
+
+            <ImageView
+                android:id="@+id/falsh_switch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="0dp"
+                android:focusable="false"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp"
+                android:layout_marginTop="10dp"
+                android:layout_marginStart="250dp"
+                android:src="@drawable/falshlightclose" />
+
+<!--            <ImageButton-->
+<!--            android:id="@+id/void_quality"-->
+<!--            android:layout_width="wrap_content"-->
+<!--            android:layout_height="wrap_content" android:paddingBottom="10dp"-->
+<!--            android:paddingEnd="10dp"-->
+<!--            android:paddingTop="10dp"-->
+<!--            android:focusable="false"-->
+<!--            android:visibility="gone"-->
+<!--            android:src="@drawable/video_quality"/>-->
         </LinearLayout>
     </androidx.appcompat.widget.Toolbar>
 </FrameLayout>
