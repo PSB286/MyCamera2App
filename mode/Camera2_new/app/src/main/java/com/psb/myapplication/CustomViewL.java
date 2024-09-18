@@ -20,6 +20,7 @@ import java.util.List;
  */
 public class CustomViewL extends LinearLayout {
 
+    private final CameraActivity mCameraActivity= (CameraActivity) getContext();
     // 日志标签
     private static final String TAG = "CustomViewL.TAG";
     // 当前选中的项目索引
@@ -30,6 +31,9 @@ public class CustomViewL extends LinearLayout {
     private List<TextView> textViews = new ArrayList<>();
 
     int index=0;
+
+    int colorState=0;
+
 
     // 子项缩放比例常量
     public static final float ItemScale = 0.1f;
@@ -66,16 +70,19 @@ public class CustomViewL extends LinearLayout {
     /**
      * 更新子视图的文字颜色，当前选中项文字颜色设为黄色，其他设为白色
      */
-    private void updateTextColor() {
+    private int updateTextColor() {
         // 遍历所有子项
         for (int i = 0; i < textViews.size(); i++) {
             TextView textView = textViews.get(i);
             if (i == mCurrentItem) {
                 textView.setTextColor(Color.YELLOW);
+                colorState=i;
             } else {
                 textView.setTextColor(Color.WHITE);
             }
         }
+        mCameraActivity.Layout_Switch(colorState);
+        return colorState;
     }
 
     /**
@@ -86,8 +93,9 @@ public class CustomViewL extends LinearLayout {
             mCurrentItem--;
             // 更新文字
             updateTextColor();
+            return true;
         }
-        return true;
+       return false;
     }
 
     /**
@@ -100,8 +108,9 @@ public class CustomViewL extends LinearLayout {
             mCurrentItem++;
             // 更新文字
             updateTextColor();
+            return true;
         }
-        return false;
+       return false;
     }
 
     /**
@@ -134,7 +143,7 @@ public class CustomViewL extends LinearLayout {
                     // 高度
                     LinearLayout.LayoutParams.WRAP_CONTENT);
             // 设置边距
-            params.setMargins(20, 0, 20, 0); // 增加左侧边距 20dp
+            params.setMargins(20, 0, 20, 110); // 增加左侧边距 20dp
             // 添加到布局中
             addView(textView, params);
 

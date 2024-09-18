@@ -23,6 +23,8 @@
     <!--请求修改音频设置权限，允许应用更改系统音频设置-->
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
+    <uses-feature android:name="android.hardware.camera.flash" android:required="true" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"

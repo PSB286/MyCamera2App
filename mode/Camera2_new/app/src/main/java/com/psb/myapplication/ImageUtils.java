@@ -1,11 +1,13 @@
 package com.psb.myapplication;
 
+import android.annotation.SuppressLint;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.Matrix;
+import android.net.Uri;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Log;
@@ -19,9 +21,10 @@ import java.util.Date;
 public class ImageUtils {
 
     private static final String TAG = "ImageUtils";
+    @SuppressLint("StaticFieldLeak")
     private static Context sContext = MyApp.getInstance();
-    private static MyApp myApp;
-
+    private static final CameraActivity myApp=CameraActivity.getInstance();
+    static Uri imageUri= null;
     private static final String GALLERY_PATH = Environment.getExternalStoragePublicDirectory(Environment
             .DIRECTORY_DCIM) + File.separator + "Camera";
 
@@ -114,6 +117,11 @@ public class ImageUtils {
         Cursor cursor = MediaStore.Images.Media.query(sContext.getContentResolver(), MediaStore.Images.Media.EXTERNAL_CONTENT_URI, STORE_IMAGES, null, null, MediaStore.Files.FileColumns.DATE_MODIFIED + " DESC");
         // 获取第一张图片
         boolean first = cursor.moveToFirst();
+        // 获取图片的 URI
+        imageUri = Uri.withAppendedPath(
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID))
+        );
         Log.d("Bitmap", "getLatestThumbBitmap: " + first);
         if (first) {
             // 获取图片id

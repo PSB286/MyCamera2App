@@ -44,8 +44,8 @@ import java.util.Objects;
 public class Camera2Proxy {
 
     private static final String TAG = "Camera2Proxy";
-
-    private Activity mActivity;
+    private final CameraActivity myapp=CameraActivity.getInstance();
+    private final Activity mActivity;
 
     private int mCameraId = CameraCharacteristics.LENS_FACING_FRONT; // 要打开的摄像头ID
     private CameraCharacteristics mCameraCharacteristics; // 相机属性
@@ -621,6 +621,16 @@ public class Camera2Proxy {
         if (x < min) return min;
         return x;
     }
+
+    public void setFlashMode(int flashModeTorch) {
+        mPreviewRequestBuilder= myapp.previewRequestBuilder;
+        mPreviewRequestBuilder.set(CaptureRequest.FLASH_MODE, flashModeTorch);
+    }
+
+    public int getFlashMode() {
+        return mPreviewRequestBuilder.get(CaptureRequest.FLASH_MODE);
+    }
+
     // 比较器
     static class CompareSizesByArea implements Comparator<Size> {
 
