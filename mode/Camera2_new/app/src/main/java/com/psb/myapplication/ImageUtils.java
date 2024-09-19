@@ -117,11 +117,13 @@ public class ImageUtils {
         Cursor cursor = MediaStore.Images.Media.query(sContext.getContentResolver(), MediaStore.Images.Media.EXTERNAL_CONTENT_URI, STORE_IMAGES, null, null, MediaStore.Files.FileColumns.DATE_MODIFIED + " DESC");
         // 获取第一张图片
         boolean first = cursor.moveToFirst();
-        // 获取图片的 URI
-        imageUri = Uri.withAppendedPath(
-                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID))
-        );
+//        // 获取图片的 URI
+        if(first) {
+            imageUri = Uri.withAppendedPath(
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                    cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID))
+            );
+        }
         Log.d("Bitmap", "getLatestThumbBitmap: " + first);
         if (first) {
             // 获取图片id

@@ -429,7 +429,7 @@ public class Camera2Proxy {
     }
     // 对焦
     public void triggerFocusAtPoint(float x, float y, int width, int height,CaptureRequest.Builder PreviewRequestBuilder,CameraCaptureSession CaptureSession) {
-        Log.d(TAG, "triggerFocusAtPoint (" + x + ", " + y + ")");
+       // Log.d(TAG, "triggerFocusAtPoint (" + x + ", " + y + ")");
         mPreviewRequestBuilder=PreviewRequestBuilder;
         mCaptureSession=CaptureSession;
         // 计算出在屏幕坐标系下的区域
@@ -494,28 +494,27 @@ public class Camera2Proxy {
     private final CameraCaptureSession.CaptureCallback mAfCaptureCallback = new CameraCaptureSession.CaptureCallback() {
 
         private void process(CaptureResult result) throws CameraAccessException {
-            // 确保 result 不为 null
-//            if (result == null) {
-//                Log.e(TAG, "CaptureResult is null");
-//                Toast.makeText(mActivity, "Result is null", Toast.LENGTH_SHORT).show();
-//                return;
-//            }
-//            // 获取焦点状态
-//            Integer state = result.get(CaptureResult.CONTROL_AF_STATE);
-//            if (state == null) {
-//                Log.e(TAG, "STATE is null");
-//                Toast.makeText(mActivity, "STATE is null", Toast.LENGTH_SHORT).show();
-//                return;
-//            }
-//            Log.d(TAG, "CONTROL_AF_STATE: " + state);
-//
-//            // 显示进入 Process 的提示
-//            Toast.makeText(mActivity, "进入Process", Toast.LENGTH_SHORT).show();
+            if (result == null) {
+                Log.e(TAG, "CaptureResult is null");
+                Toast.makeText(mActivity, "Result is null", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            // 获取焦点状态
+            Integer state = result.get(CaptureResult.CONTROL_AF_STATE);
+            if (state == null) {
+                Log.e(TAG, "STATE is null");
+                Toast.makeText(mActivity, "STATE is null", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            Log.d(TAG, "CONTROL_AF_STATE: " + state);
+
+            // 显示进入 Process 的提示
+            Toast.makeText(mActivity, "进入Process", Toast.LENGTH_SHORT).show();
 
             // 检查焦点状态
-            //if (Objects.equals(state, CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED)
-                    //|| Objects.equals(state, CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED)) {
-               // Toast.makeText(mActivity, "对焦成功", Toast.LENGTH_SHORT).show();
+            if (Objects.equals(state, CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED)
+                    || Objects.equals(state, CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED)) {
+                Toast.makeText(mActivity, "对焦成功", Toast.LENGTH_SHORT).show();
                 // 设置相关参数
                 mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CaptureRequest.CONTROL_AF_TRIGGER_CANCEL);
                 // 设置对焦模式
@@ -524,13 +523,13 @@ public class Camera2Proxy {
                 mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF);
                 // 启动预览
                 startPreview();
-          // } else {
+           } else {
                 // 对焦失败，记录日志并提示用户
-                //Log.w(TAG, "对焦失败，状态：" + state);
-             //   Toast.makeText(mActivity, "对焦失败，请调整相机位置或光线", Toast.LENGTH_SHORT).show();
-                // 尝试重新对焦
-                //retryAutoFocus();
-          //  }
+                Log.w(TAG, "对焦失败，状态：" + state);
+                Toast.makeText(mActivity, "对焦失败，请调整相机位置或光线", Toast.LENGTH_SHORT).show();
+                 //尝试重新对焦
+              //  retryAutoFocus();
+            }
         }
 
         private void retryAutoFocus() throws CameraAccessException {
