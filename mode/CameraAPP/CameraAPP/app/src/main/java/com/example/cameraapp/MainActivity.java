@@ -29,13 +29,19 @@ public class MainActivity extends Activity {
     private static final int REQUEST_WRITE_STORAGE_PERMISSION = 2;
     private static final int REQUEST_RECORD_AUDIO_PERMISSION = 3;
     private static final int REQUEST_READ_STORAGE_PERMISSION = 4;
+    // 切换摄像头按钮
     public ImageButton switchCameraId;
+    // 拍照模式
     private PhotoMode photoMode;
+    // 录像模式
     private VideoMode videoMode;
+    // 拍照模式
     private final boolean PHOTO = true;
     //模式切换按钮
     private Button capbtn;
+    //录像按钮
     private Button vidbtn;
+    //模糊背景
     private View mBlurView;
     @SuppressLint("MissingInflatedId")
     @Override

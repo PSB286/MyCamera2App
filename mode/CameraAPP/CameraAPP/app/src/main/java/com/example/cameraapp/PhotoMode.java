@@ -101,25 +101,28 @@ public class PhotoMode implements IMode{
     public Animation btnAnimation;
     public Size mCurrentAspectRatio = SUPPORTED_ASPECT_RATIOS.get(0); //当前支持的画幅尺寸默认是4:3
 
+    //构造函数
     public PhotoMode(MainActivity activity){
         this.mActivity = activity;
         this.rootLayout = activity.findViewById(R.id.root);
         this.imageView = activity.findViewById(R.id.imageView);
         this.textureView = activity.findViewById(R.id.textureView);
         this.capture = activity.findViewById(R.id.capture);
-
+        //画幅选择
         mAspectRatio = mActivity.findViewById(R.id.aspectRatio);
         ArrayAdapter<Size> adapter = new ArrayAdapter<>(mActivity, android.R.layout.simple_spinner_item,SUPPORTED_ASPECT_RATIOS);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         mAspectRatio.setAdapter(adapter);
 
         mAspectRatio.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+           // 选择画幅尺寸
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int position, long id) {
                 mCurrentAspectRatio = (Size)adapterView.getItemAtPosition(position);
                 setAspectRatio(mCurrentAspectRatio);
                 openCamera(textureView.getWidth(),textureView.getHeight());
             }
+            // 未选择
             @Override
             public void onNothingSelected(AdapterView<?> adapterView) {
 

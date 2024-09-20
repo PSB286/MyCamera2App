@@ -8,6 +8,7 @@ import android.view.TextureView;
 //继承TextureView类，实现自动调整TextureView尺寸以适应预览尺寸
 public class AutoFitTextureView extends TextureView
 {
+    //视图的宽高比
     private int mRatioWidth = 0;
     private int mRatioHeight = 0;
 
@@ -26,6 +27,7 @@ public class AutoFitTextureView extends TextureView
     {
         mRatioWidth = width;
         mRatioHeight = height;
+        // 重新调用requestLayout方法，以重新计算视图的尺寸
         requestLayout();
         // 添加日志输出，方便调试
         Log.d("--AutoFitTextureView--", "Setting aspect ratio: " + width + ":" + height);

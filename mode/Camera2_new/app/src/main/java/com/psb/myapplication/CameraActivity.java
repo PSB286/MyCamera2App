@@ -31,6 +31,7 @@ import android.media.MediaRecorder;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -42,13 +43,20 @@ import android.util.Size;
 import android.util.SparseIntArray;
 import android.util.TypedValue;
 import android.view.GestureDetector;
+import android.view.Gravity;
+import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.PopupWindow;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -84,8 +92,10 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     private DisplayMetrics mDisplayMetrics = null;
     //按键定义
     private ImageView record, switch_camera, capture,mPictureIv,falsh_switch;
-    private TextView switch_frame,void_quality,timerText;
+    private TextView switch_frame,void_quality,timerText,option1,option2,option3;
     private FocusSunView focusSunView;
+    private LinearLayout Choose;
+    private RelativeLayout Title;
     private int screenWidth = 0;
     private int screenHeight = 0;
     private String cameraId = "0";
@@ -112,6 +122,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     Runnable runnable;
     private short mFlashMode = 3;
     private CameraCaptureSession.CaptureCallback mPreCaptureCallback;
+    private PopupWindow popupWindow;
 
 
     @SuppressLint("MissingInflatedId")
@@ -317,11 +328,18 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         focusSunView = findViewById(R.id.focus_sun_view);
         Previous_recorderPath=null;
         newroidPath=null;
+        Choose=findViewById(R.id.Choose);
+        Title=findViewById(R.id.title);
+        option1=findViewById(R.id.option1);
+        option2=findViewById(R.id.option2);
+        option3=findViewById(R.id.option3);
+
     }
 
     public static CameraActivity getInstance() {
         return myapp;
     }
+
 
     // 初始化自定义View
     @SuppressLint("ClickableViewAccessibility")
@@ -420,28 +438,39 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 SwichFlash();
             }
         });
+
+        option1.setOnClickListener(v -> {
+            if (v.getId() == R.id.option1) {
+                switch_frame.setText(option1.getText().toString());
+                Title.setVisibility(View.VISIBLE);
+                Choose.setVisibility(View.GONE);
+            }
+        });
+
+        option2.setOnClickListener(v -> {
+            if (v.getId() == R.id.option2) {
+                switch_frame.setText(option2.getText().toString());
+                Title.setVisibility(View.VISIBLE);
+                Choose.setVisibility(View.GONE);
+            }
+        });
+
+        option3.setOnClickListener(v -> {
+            if (v.getId() == R.id.option3) {
+                switch_frame.setText(option3.getText().toString());
+                Title.setVisibility(View.VISIBLE);
+                Choose.setVisibility(View.GONE);
+            }
+        });
+
+
     }
 
     // 切换帧
     private void SwichFrame()
     {
-        if((previewSize.getWidth()==1600)&&(previewSize.getHeight()==720))
-        {
-            previewSize=new Size(720,720);
-            //Toast.makeText(CameraActivity.this, "1高"+previewSize.getHeight()+"宽"+previewSize.getWidth(), Toast.LENGTH_SHORT).show();
-            openCamera(previewSize.getWidth(),previewSize.getHeight());
-        }
-        else if((previewSize.getWidth()==960)&&(previewSize.getHeight()==720))
-        {
-            previewSize=new Size(1600,720);
-            //Toast.makeText(CameraActivity.this, "2高"+previewSize.getHeight()+"宽"+previewSize.getWidth(), Toast.LENGTH_SHORT).show();
-            openCamera(previewSize.getWidth(),previewSize.getHeight());
-        }
-        else {
-            previewSize=new Size(960,720);
-            //Toast.makeText(CameraActivity.this, "4高"+previewSize.getHeight()+"宽"+previewSize.getWidth(), Toast.LENGTH_SHORT).show();
-            openCamera(previewSize.getWidth(),previewSize.getHeight());
-        }
+        Title.setVisibility(View.GONE);
+        Choose.setVisibility(View.VISIBLE);
     }
 
     private void SwichFlash() {
@@ -944,8 +973,13 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             assert map != null;
             // 获取所有支持的尺寸
             Size largest = Collections.max(Arrays.asList(map.getOutputSizes(ImageFormat.JPEG)), new CompareSizesByArea());
+            Log.d("--openCamera--", "largest.getWidth():" + largest.getWidth() + " largest.getHeight():" + largest.getHeight());
+            //largest=new Size(1,1);
+            Log.d("--openCamera--", "largest.getWidth():" + largest.getWidth()+ " largest.getHeight():" + largest.getHeight());
             // 获取最佳的预览尺寸
             previewSize = chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class), width, height, largest);
+            Log.d("--openCamera--", "previewSize.getWidth():" + previewSize.getWidth() + " previewSize.getHeight():" + previewSize.getHeight());
+
             // 根据选中的预览尺寸来调整预览组件（TextureView的）的长宽比
             int orientation = getResources().getConfiguration().orientation;
             if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
@@ -953,6 +987,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             } else {
                 textureView.setAspectRatio(previewSize.getHeight(), previewSize.getWidth());
             }
+            Log.d("--initAutoFitTextureView--", "textureView.getWidth():" + textureView.getWidth() + " textureView.getHeight():" + textureView.getHeight());
 
 
         } catch (CameraAccessException e) {
@@ -1040,12 +1075,17 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     private static Size chooseOptimalSize(Size[] choices, int width, int height, Size aspectRatio) {
         // 收集摄像头支持的打开预览Surface的分辨率
         List<Size> bigEnough = new ArrayList<>();
+
+        // 宽高比
         int w = aspectRatio.getWidth();
         int h = aspectRatio.getHeight();
+        Log.d("--chooseOptimalSize--", "宽高比：" + w + ":" + h);
+        // 遍历所有支持的预览尺寸
         for (Size option : choices) {
             if (option.getHeight() == option.getWidth() * h / w &&
                     option.getWidth() >= width && option.getHeight() >= height) {
                 bigEnough.add(option);
+                Log.d("--chooseOptimalSize--", "支持的预览尺寸：" + option.getWidth() + ":" + option.getHeight());
             }
         }
 
