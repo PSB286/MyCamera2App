@@ -110,6 +110,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     File previousFile=null;
     private int seconds = 0;
     Runnable runnable;
+    private short mFlashMode = 3;
+    private CameraCaptureSession.CaptureCallback mPreCaptureCallback;
 
 
     @SuppressLint("MissingInflatedId")
@@ -167,6 +169,9 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 // 单指点击对焦
                 switch (event.getAction() & MotionEvent.ACTION_MASK) {
                     case MotionEvent.ACTION_DOWN:
+                        if(mFlashMode==2) {
+                            StrongFlash();
+                        }
                         // 单指按下
                         if (!isZooming && pointerCount == 1) {
                             // 点击对焦
@@ -441,7 +446,71 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
     private void SwichFlash() {
 
-    }
+            switch (mFlashMode) {
+                case 0:
+                    mFlashMode = 1;
+                    falsh_switch.setImageResource(R.drawable.falshlightaout);
+                    // 设置闪光灯模式为自动
+                    previewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
+                    try {
+                        captureSession.setRepeatingRequest(
+                                previewRequestBuilder.build(),
+                                mPreCaptureCallback, null);
+                    } catch (CameraAccessException e) {
+                        e.printStackTrace();
+                        return;
+                    }
+
+                    break;
+                case 1:
+                    mFlashMode = 2;
+                    falsh_switch.setImageResource(R.drawable.falshlightcopen);
+
+                    break;
+                case 2:
+                    mFlashMode = 3;
+                    falsh_switch.setImageResource(R.drawable.falshlightclose);
+                    // 设置闪光灯模式为自动
+                    previewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
+                    previewRequestBuilder.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_OFF);
+
+                    try {
+                        captureSession.setRepeatingRequest(
+                                previewRequestBuilder.build(),
+                                mPreCaptureCallback, null);
+                    } catch (CameraAccessException e) {
+                        e.printStackTrace();
+                        return;
+                    }
+                    break;
+                case 3:
+                    mFlashMode = 0;
+                    falsh_switch.setImageResource(R.drawable.flashlight);
+                    // 设置闪光灯模式为常亮
+                    previewRequestBuilder.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_TORCH);
+                    try {
+                        captureSession.setRepeatingRequest(
+                                previewRequestBuilder.build(),
+                                mPreCaptureCallback, null);
+                    } catch (CameraAccessException e) {
+                        e.printStackTrace();
+                    }
+            }
+        }
+
+        private void StrongFlash()
+        {
+            previewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_ALWAYS_FLASH);
+            try {
+                captureSession.setRepeatingRequest(
+                        previewRequestBuilder.build(),
+                        mPreCaptureCallback, null);
+            } catch (CameraAccessException e) {
+                e.printStackTrace();
+            }
+        }
+
+
 
     private void setFlashMode(int mode) {
         if (previewRequestBuilder == null || captureSession == null) {
@@ -696,6 +765,10 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
     private void takePicture() {
         try {
+                if(mFlashMode==2)
+                {
+                    StrongFlash();
+                }
            // mImageReader.setOnImageAvailableListener(onImageAvailableListener, null);
             // 创建捕获请求
             CaptureRequest.Builder captureBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
@@ -795,7 +868,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         {
             record.setVisibility(View.VISIBLE);
             void_quality.setVisibility(View.VISIBLE);
-            falsh_switch.setVisibility(View.VISIBLE);
+            falsh_switch.setVisibility(View.GONE);
         }else {
             capture.setVisibility(View.VISIBLE);
             switch_frame.setVisibility(View.VISIBLE);
@@ -1038,11 +1111,13 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         previewRequestBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
         // 设置预览目标Surface
         previewRequestBuilder.addTarget(previewSurface);
-        // 设置自动对焦模式
+        // 创建预览请求
         previewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
-        // 设置自动曝光模式
         previewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
-
+        previewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
+        previewRequestBuilder.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_OFF);
+        previewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_START);
+        previewRequestBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER, CameraMetadata.CONTROL_AE_PRECAPTURE_TRIGGER_START);
         try {
             cameraDevice.createCaptureSession(surfaces, new CameraCaptureSession.StateCallback() {
                 // 预览会话已创建
@@ -1053,7 +1128,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                         captureSession = session;
 
                         // 开启连续预览
-                        captureSession.setRepeatingRequest(previewRequestBuilder.build(), null, null);
+                        captureSession.setRepeatingRequest(previewRequestBuilder.build(), mPreCaptureCallback, null);
                     } catch (CameraAccessException e) {
                         e.printStackTrace();
                     }
