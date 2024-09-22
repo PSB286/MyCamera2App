@@ -82,82 +82,9 @@
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="100dp"
-        android:background="@color/colorPrimary"
+        android:background="#00000000"
         app:contentInsetStart="0dp">
     <!-- 自己定义拍照的标题栏-->
-        <RelativeLayout
-            android:id="@+id/title"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:padding="20dp"
-            android:weightSum="2">
-
-            <!-- 第一个TextView -->
-            <TextView
-                android:id="@+id/frame_switch"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textColor="@android:color/white"
-                android:paddingTop="20dp"
-                android:paddingEnd="10dp"
-                android:paddingBottom="10dp"
-                android:text="4:3"
-                android:textSize="25sp"
-                android:gravity="right|center"
-                tools:ignore="RtlSymmetry"
-                android:layout_alignParentStart="true"
-                android:layout_marginEnd="20dp" />
-
-            <!-- 第二个TextView -->
-            <TextView
-                android:id="@+id/void_quality"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textColor="@android:color/white"
-                android:text="720P"
-                android:textSize="25sp"
-                android:gravity="right|center"
-                tools:ignore="RtlHardcoded,RtlSymmetry"
-                android:paddingTop="20dp"
-                android:paddingEnd="10dp"
-                android:paddingBottom="10dp"
-                android:visibility="gone"
-                android:layout_toEndOf="@id/frame_switch"
-                android:layout_marginEnd="20dp" />
-
-            <!-- ImageView -->
-            <ImageView
-                android:id="@+id/falsh_switch"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="0dp"
-                android:focusable="false"
-                android:paddingTop="10dp"
-                android:paddingBottom="10dp"
-                android:layout_marginTop="10dp"
-                android:layout_marginStart="220dp"
-                android:src="@drawable/falshlightclose"
-                android:layout_alignParentEnd="true" />
-            <!-- 新增的计时器 TextView -->
-            <TextView
-                android:id="@+id/timer_text"
-                android:layout_width="75dp"
-                android:layout_height="wrap_content"
-                android:layout_alignParentStart="true"
-                android:layout_alignParentEnd="true"
-                android:layout_alignParentBottom="true"
-                android:layout_marginStart="120dp"
-                android:layout_marginEnd="120dp"
-                android:layout_marginBottom="1dp"
-                android:background="@drawable/background"
-                android:gravity="center"
-                android:text="00:00"
-                android:textColor="@android:color/white"
-                android:textSize="25sp"
-                android:visibility="gone"
-                />
-
-        </RelativeLayout>
 
         <LinearLayout
             android:id="@+id/Choose"
@@ -166,6 +93,7 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:padding="10dp"
+            android:background="#00000000"
             android:weightSum="3"
             android:layout_marginTop="20dp"
             tools:ignore="ExtraText">
@@ -217,5 +145,127 @@
         </LinearLayout>
 
 
+        <LinearLayout
+            android:id="@+id/Choose2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:padding="10dp"
+            android:visibility="gone"
+            android:background="#00000000"
+            android:weightSum="2"
+            android:layout_marginTop="20dp"
+            tools:ignore="ExtraText">
+
+            <TextView
+                android:id="@+id/option4"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="480P"
+                android:textSize="25sp"
+                android:textColor="@android:color/white"
+                android:padding="10dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:background="?attr/selectableItemBackground"
+                tools:ignore="DuplicateIds" />
+
+            <TextView
+                android:id="@+id/option5"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="720P"
+                android:textSize="25sp"
+                android:textColor="@android:color/white"
+                android:padding="10dp"
+                android:clickable="true"
+                android:gravity="center"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:background="?attr/selectableItemBackground"/>
+
+
+
+        </LinearLayout>
+
     </androidx.appcompat.widget.Toolbar>
+
+    <RelativeLayout
+        android:id="@+id/title"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#00000000"
+        android:padding="20dp"
+        android:weightSum="2">
+
+        <!-- 第一个TextView -->
+        <TextView
+            android:id="@+id/frame_switch"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
+            android:layout_marginEnd="20dp"
+            android:background="#00000000"
+            android:gravity="right|center"
+            android:paddingTop="20dp"
+            android:paddingEnd="10dp"
+            android:paddingBottom="10dp"
+            android:text="4:3"
+            android:textColor="@android:color/white"
+            android:textSize="25sp"
+            tools:ignore="RtlSymmetry" />
+
+        <!-- 第二个TextView -->
+        <TextView
+            android:id="@+id/void_quality"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="20dp"
+            android:layout_toEndOf="@id/frame_switch"
+            android:gravity="right|center"
+            android:paddingTop="20dp"
+            android:background="#00000000"
+            android:paddingEnd="10dp"
+            android:paddingBottom="10dp"
+            android:text="720P"
+            android:textColor="@android:color/white"
+            android:textSize="25sp"
+            android:visibility="gone"
+            tools:ignore="RtlHardcoded,RtlSymmetry" />
+
+        <!-- ImageView -->
+        <ImageView
+            android:id="@+id/falsh_switch"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:layout_marginStart="220dp"
+            android:layout_marginTop="10dp"
+            android:layout_marginEnd="0dp"
+            android:background="#00000000"
+            android:focusable="false"
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp"
+            android:src="@drawable/falshlightclose" />
+        <!-- 新增的计时器 TextView -->
+        <TextView
+            android:id="@+id/timer_text"
+            android:layout_width="75dp"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
+            android:layout_alignParentEnd="true"
+            android:layout_marginStart="120dp"
+            android:layout_marginEnd="120dp"
+            android:layout_marginTop="20dp"
+            android:background="@drawable/background"
+            android:gravity="center"
+            android:text="00:00"
+            android:visibility="gone"
+            android:textColor="@android:color/white"
+            android:textSize="25sp" />
+
+    </RelativeLayout>
 </FrameLayout>

@@ -99,9 +99,9 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     private DisplayMetrics mDisplayMetrics = null;
     //按键定义
     private ImageView record, switch_camera, capture, mPictureIv, falsh_switch;
-    private TextView switch_frame, void_quality, timerText, option1, option2, option3;
+    private TextView switch_frame, void_quality, timerText, option1, option2, option3, option4,option5;
     private FocusSunView focusSunView;
-    private LinearLayout Choose;
+    private LinearLayout Choose,Choose2;
     private RelativeLayout Title;
     private int screenWidth = 0;
     private int screenHeight = 0;
@@ -132,6 +132,10 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     private PopupWindow popupWindow;
     public MediaActionSound mMediaActionSound;
     public Animation btnAnimation;
+    Size largest=new Size(4,3);
+    boolean isCapture =  false;
+    boolean isRecord4 = false;
+    boolean isRecord5 = false;
 
 
     @SuppressLint("MissingInflatedId")
@@ -338,10 +342,13 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         Previous_recorderPath = null;
         newroidPath = null;
         Choose = findViewById(R.id.Choose);
+        Choose2=findViewById(R.id.Choose2);
         Title = findViewById(R.id.title);
         option1 = findViewById(R.id.option1);
         option2 = findViewById(R.id.option2);
         option3 = findViewById(R.id.option3);
+        option4= findViewById(R.id.option4);
+        option5 = findViewById(R.id.option5);
         //拍照声音
         mMediaActionSound = new MediaActionSound();
         //按钮动画
@@ -438,7 +445,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         void_quality.setOnClickListener(v -> {
             if (v.getId() == R.id.void_quality) {
                 //Toast.makeText(CameraActivity.this, "点击了切换质量按钮", Toast.LENGTH_SHORT).show();
-                //SwichQuality();
+                SwichQuality();
             }
         });
 
@@ -465,6 +472,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 switch_frame.setText(option1.getText().toString());
                 Title.setVisibility(View.VISIBLE);
                 Choose.setVisibility(View.GONE);
+                largest = new Size(1,1);
+                openCamera(mTextureView.getWidth(), mTextureView.getHeight());
             }
         });
 
@@ -473,18 +482,53 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 switch_frame.setText(option2.getText().toString());
                 Title.setVisibility(View.VISIBLE);
                 Choose.setVisibility(View.GONE);
+                largest = new Size(4,3);
+                openCamera(mTextureView.getWidth(), mTextureView.getHeight());
             }
         });
 
         option3.setOnClickListener(v -> {
             if (v.getId() == R.id.option3) {
+                Log.d("--option3--", "option3");
                 switch_frame.setText(option3.getText().toString());
-                Title.setVisibility(View.VISIBLE);
                 Choose.setVisibility(View.GONE);
+                Title.setVisibility(View.VISIBLE);
+                Log.d("--option3--", largest.toString());
+                largest = new Size(16,9);
+                isCapture=true;
+                Log.d("--option3--", largest.toString());
+                openCamera(mTextureView.getWidth(), mTextureView.getHeight());
+            }
+        });
+
+        option4.setOnClickListener(v -> {
+           if (v.getId() == R.id.option4)
+           {
+               void_quality.setText(option4.getText().toString());
+               Choose2.setVisibility(View.GONE);
+               Title.setVisibility(View.VISIBLE);
+               isRecord4=true;
+               openCamera(mTextureView.getWidth(), mTextureView.getHeight());
+           }
+        });
+
+        option5.setOnClickListener(v -> {
+            if (v.getId() == R.id.option5)
+            {
+                void_quality.setText(option5.getText().toString());
+                Choose2.setVisibility(View.GONE);
+                Title.setVisibility(View.VISIBLE);
+                isRecord5=true;
+                openCamera(mTextureView.getWidth(), mTextureView.getHeight());
             }
         });
 
 
+    }
+
+    private void SwichQuality() {
+        Title.setVisibility(View.GONE);
+        Choose2.setVisibility(View.VISIBLE);
     }
 
     // 拍照动画
@@ -676,6 +720,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             recordRequestBuilder.addTarget(previewSurface); // 保留预览Surface
             // 设置自动对焦和自动曝光模式
             recordRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_VIDEO);
+            // 设置自动曝光模式
             recordRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
             // 更新捕获会话
             captureSession.setRepeatingRequest(recordRequestBuilder.build(), null, null);
@@ -1039,19 +1084,37 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             // 获取摄像头支持的最大尺寸
             assert map != null;
             // 获取所有支持的尺寸
-            Size largest = Collections.max(Arrays.asList(map.getOutputSizes(ImageFormat.JPEG)), new CompareSizesByArea());
-            Log.d("--openCamera--", "largest.getWidth():" + largest.getWidth() + " largest.getHeight():" + largest.getHeight());
-            //largest=new Size(1,1);
-            Log.d("--openCamera--", "largest.getWidth():" + largest.getWidth() + " largest.getHeight():" + largest.getHeight());
-            // 获取最佳的预览尺寸
-            previewSize = chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class), width, height, largest);
-            Log.d("--openCamera--", "previewSize.getWidth():" + previewSize.getWidth() + " previewSize.getHeight():" + previewSize.getHeight());
+            //Size largest = Collections.max(Arrays.asList(map.getOutputSizes(ImageFormat.JPEG)), new CompareSizesByArea());
 
+            width = largest.getWidth();
+            height = largest.getHeight();
+            Log.d("--initAutoFitTextureView--", "width:" + width+" height:"+height);
+            previewSize = chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class), width, height, largest);
+            Log.d("--initAutoFitTextureView--", "previewSize:" + previewSize.getWidth()+" height:"+previewSize.getHeight());
             // 根据选中的预览尺寸来调整预览组件（TextureView的）的长宽比
+            //previewSize=new Size(1600, 720);
+            if(width==16&&isCapture) {
+                previewSize=new Size(1600, 720);
+                Log.d("--initAutoFitTextureView--", "isCapture");
+            }
+            if(isRecord4)
+            {
+                previewSize = new Size(960,720);
+                isRecord4=false;
+            }
+            if(isRecord5)
+            {
+                previewSize = new Size(1280,720);
+                isRecord5=false;
+            }
+            Position_frame(previewSize);
+            // 横竖屏判断
             int orientation = getResources().getConfiguration().orientation;
             if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
+                // 横屏
                 textureView.setAspectRatio(previewSize.getWidth(), previewSize.getHeight());
             } else {
+                // 竖屏
                 textureView.setAspectRatio(previewSize.getHeight(), previewSize.getWidth());
             }
             Log.d("--initAutoFitTextureView--", "textureView.getWidth():" + textureView.getWidth() + " textureView.getHeight():" + textureView.getHeight());
@@ -1065,6 +1128,45 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         }
         // 配置变换
         configureTransform(previewSize.getWidth(), previewSize.getHeight());
+    }
+
+    private void Position_frame(Size previewSize) {
+        if((previewSize.getWidth()==1600)) {
+
+            Log.d("--Position_frame--", "1600/720");
+            // 获取 FrameLayout.LayoutParams
+            FrameLayout.LayoutParams layoutParams = (FrameLayout.LayoutParams) mTextureView.getLayoutParams();
+
+            // 设置 topMargin 为 100dp
+            int margin = (int) (0 * getResources().getDisplayMetrics().density);
+            layoutParams.topMargin = margin;
+
+            // 应用新的 LayoutParams
+            mTextureView.setLayoutParams(layoutParams);
+        }
+        else if((previewSize.getHeight()/previewSize.getWidth()== 1))
+        {
+            // 获取 FrameLayout.LayoutParams
+            FrameLayout.LayoutParams layoutParams = (FrameLayout.LayoutParams) mTextureView.getLayoutParams();
+
+            // 设置 topMargin 为 100dp
+            int margin = (int) (160 * getResources().getDisplayMetrics().density);
+            layoutParams.topMargin = margin;
+
+            // 应用新的 LayoutParams
+            mTextureView.setLayoutParams(layoutParams);
+        }
+        else {
+            // 获取 FrameLayout.LayoutParams
+            FrameLayout.LayoutParams layoutParams = (FrameLayout.LayoutParams) mTextureView.getLayoutParams();
+            Log.d("--Position_frame--", "4/3");
+            // 设置 topMargin 为 100dp
+            int margin = (int) (100 * getResources().getDisplayMetrics().density);
+            layoutParams.topMargin = margin;
+
+            // 应用新的 LayoutParams
+            mTextureView.setLayoutParams(layoutParams);
+        }
     }
 
     //配置变换
@@ -1145,10 +1247,12 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
         // 宽高比
         int w = aspectRatio.getWidth();
+        // 高
         int h = aspectRatio.getHeight();
         Log.d("--chooseOptimalSize--", "宽高比：" + w + ":" + h);
         // 遍历所有支持的预览尺寸
         for (Size option : choices) {
+            // 宽高比必须相同，且宽高比为w:h
             if (option.getHeight() == option.getWidth() * h / w &&
                     option.getWidth() >= width && option.getHeight() >= height) {
                 bigEnough.add(option);
@@ -1156,9 +1260,33 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             }
         }
 
-        // 如果找到多个预览尺寸，获取其中面积最小的。
+// 如果找到多个预览尺寸，获取其中面积第二小的。
         if (!bigEnough.isEmpty()) {
-            return Collections.min(bigEnough, new CompareSizesByArea());
+            // 使用自定义比较器按面积从小到大排序
+            List<Size> sortedSizes = new ArrayList<>(bigEnough);
+            Collections.sort(sortedSizes, new CompareSizesByArea());
+
+            if(w==1)
+            // 返回面积第二小的尺寸
+            {
+                Log.d("--chooseOptimalSize--", "1/1");
+                return sortedSizes.get(3);
+            }
+            if(w==4)
+            {
+                Log.d("--chooseOptimalSize--", "4/3");
+                return sortedSizes.get(7);
+            }
+            if(w==16)
+            {
+                Log.d("--chooseOptimalSize--", "16/9");
+                return sortedSizes.get(0);
+            }
+            else
+            {
+                Log.d("--chooseOptimalSize--", "1/1");
+                return sortedSizes.get(0);
+            }
         } else {
             System.out.println("找不到合适的预览尺寸！！！");
             Log.d("--chooseOptimalSize--", "找不到合适的预览尺寸！！！");

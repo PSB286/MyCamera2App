@@ -118,7 +118,9 @@ public class PhotoMode implements IMode{
            // 选择画幅尺寸
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int position, long id) {
+                //
                 mCurrentAspectRatio = (Size)adapterView.getItemAtPosition(position);
+                //
                 setAspectRatio(mCurrentAspectRatio);
                 openCamera(textureView.getWidth(),textureView.getHeight());
             }
