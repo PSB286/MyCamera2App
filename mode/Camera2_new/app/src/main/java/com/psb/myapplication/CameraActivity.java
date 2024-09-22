@@ -1,5 +1,9 @@
 package com.psb.myapplication;
 
+import static com.psb.myapplication.ImageUtils.getLatestThumbBitmap;
+
+import static java.lang.Thread.sleep;
+
 import android.Manifest;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
@@ -91,8 +95,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     private GestureDetector mGestureDetector = null;
     private DisplayMetrics mDisplayMetrics = null;
     //按键定义
-    private ImageView record, switch_camera, capture,mPictureIv,falsh_switch;
-    private TextView switch_frame,void_quality,timerText,option1,option2,option3;
+    private ImageView record, switch_camera, capture, mPictureIv, falsh_switch;
+    private TextView switch_frame, void_quality, timerText, option1, option2, option3;
     private FocusSunView focusSunView;
     private LinearLayout Choose;
     private RelativeLayout Title;
@@ -113,11 +117,11 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     CaptureRequest.Builder previewRequestBuilder;
     CameraCharacteristics characteristics;
     public Context mContext;
-    private boolean isRecording=false;
-    String Previous_recorderPath,newroidPath;
-    String recorderPath,current;
+    private boolean isRecording = false;
+    String Previous_recorderPath, newroidPath;
+    String recorderPath, current;
     boolean isRunning = false;
-    File previousFile=null;
+    File previousFile = null;
     private int seconds = 0;
     Runnable runnable;
     private short mFlashMode = 3;
@@ -180,13 +184,13 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 // 单指点击对焦
                 switch (event.getAction() & MotionEvent.ACTION_MASK) {
                     case MotionEvent.ACTION_DOWN:
-                        if(mFlashMode==2) {
+                        if (mFlashMode == 2) {
                             StrongFlash();
                         }
                         // 单指按下
                         if (!isZooming && pointerCount == 1) {
                             // 点击对焦
-                           // Toast.makeText(getApplicationContext(), "单指按下", Toast.LENGTH_SHORT).show();
+                            // Toast.makeText(getApplicationContext(), "单指按下", Toast.LENGTH_SHORT).show();
                             mCameraProxy.triggerFocusAtPoint((int) event.getX(), (int) event.getY(), previewSize.getWidth(), previewSize.getHeight(), previewRequestBuilder, captureSession);
                             focusSunView.setVisibility(View.VISIBLE);
                             // 设置焦点位置
@@ -211,7 +215,6 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             }
         });
     }
-
 
 
     @Override
@@ -240,7 +243,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
     @Override
     public void onStop() {
-        Log.d("--onDestroy--", "onDestroy" );
+        Log.d("--onDestroy--", "onDestroy");
         File newFile = new File(Previous_recorderPath);
         if (newFile.exists()) {
             newFile.delete();
@@ -250,7 +253,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
     @Override
     public void onDestroy() {
-        Log.d("--onDestroy--", "onDestroy" );
+        Log.d("--onDestroy--", "onDestroy");
         File newFile = new File(Previous_recorderPath);
         if (newFile.exists()) {
             newFile.delete();
@@ -265,6 +268,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         float y = event.getY(0) - event.getY(1);
         return (float) Math.sqrt(x * x + y * y);
     }
+
     /*
     初始化函数
      */
@@ -306,7 +310,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         capture = findViewById(R.id.capture);
         switch_frame = findViewById(R.id.frame_switch);
         void_quality = findViewById(R.id.void_quality);
-        falsh_switch=findViewById(R.id.falsh_switch);
+        falsh_switch = findViewById(R.id.falsh_switch);
 
 
         // 获取屏幕宽高
@@ -319,20 +323,20 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         surfaces = new ArrayList<>();
         // 创建Handler
         handler = new Handler(Looper.getMainLooper());
-        mCameraProxy= new Camera2Proxy(this);
+        mCameraProxy = new Camera2Proxy(this);
         // 显示最近
         mPictureIv = findViewById(R.id.picture_iv);
 //       // 显示最近一次拍照的图片
-        mPictureIv.setImageBitmap(ImageUtils.getLatestThumbBitmap(this));
+        mPictureIv.setImageBitmap(getLatestThumbBitmap(this));
         // 初始化焦点光圈
         focusSunView = findViewById(R.id.focus_sun_view);
-        Previous_recorderPath=null;
-        newroidPath=null;
-        Choose=findViewById(R.id.Choose);
-        Title=findViewById(R.id.title);
-        option1=findViewById(R.id.option1);
-        option2=findViewById(R.id.option2);
-        option3=findViewById(R.id.option3);
+        Previous_recorderPath = null;
+        newroidPath = null;
+        Choose = findViewById(R.id.Choose);
+        Title = findViewById(R.id.title);
+        option1 = findViewById(R.id.option1);
+        option2 = findViewById(R.id.option2);
+        option3 = findViewById(R.id.option3);
 
     }
 
@@ -370,14 +374,15 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         // 录像按钮
         record.setOnClickListener(v -> {
             if (v.getId() == R.id.recordvideo) {
-                if(!isRecording) {
+                if (!isRecording) {
                     Toast.makeText(CameraActivity.this, "点击了录像按钮", Toast.LENGTH_SHORT).show();
                     startRecordingVideo();
-                }
-                else {
+                } else {
                     try {
                         Toast.makeText(CameraActivity.this, "停止录像按钮", Toast.LENGTH_SHORT).show();
                         stopRecordingVideo();
+                       mPictureIv.setImageBitmap(getLatestThumbBitmap(this));
+                       // ImageUtils.setLatestThumbBitmapAsync(mPictureIv, CameraActivity.this);
                     } catch (CameraAccessException e) {
                         throw new RuntimeException(e);
                     }
@@ -389,7 +394,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         switch_camera.setOnClickListener(v -> {
             if (v.getId() == R.id.switch_camera) {
                 //Toast.makeText(CameraActivity.this, "点击了切换摄像头按钮", Toast.LENGTH_SHORT).show();
-                    switchCameraWithMaskAnimation();
+                switchCameraWithMaskAnimation();
                 //SwichCamera();
             }
         });
@@ -399,9 +404,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             if (v.getId() == R.id.capture) {
                 Toast.makeText(CameraActivity.this, "点击了拍照按钮", Toast.LENGTH_SHORT).show();
                 takePicture();
-                mPictureIv.setImageBitmap(ImageUtils.getLatestThumbBitmap(this));
-                //takePicture(reader -> new ImageSaveTask().execute(reader.acquireNextImage()));
-               // mCameraProxy.captureStillPicture(reader -> new ImageSaveTask().execute(reader.acquireNextImage())); // 拍照
+               // mPictureIv.setImageBitmap(getLatestThumbBitmap(this));
+                setLatestThumbBitmapAsync(mPictureIv, this);
             }
         });
 
@@ -466,84 +470,110 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
     }
 
+    public static void setLatestThumbBitmapAsync(final ImageView imageView, final Context context) {
+        // 创建一个 Handler，用于在主线程中更新 UI
+        final Handler handler = new Handler(Looper.getMainLooper());
+
+        // 创建一个新的 Runnable，用于异步加载 Bitmap 并更新 UI
+        Runnable runnable = new Runnable() {
+            @Override
+            public void run() {
+                // 在子线程中执行耗时操作
+                try {
+                    sleep(600);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+                Bitmap bitmap = getLatestThumbBitmap(context);
+                imageView.setImageBitmap(bitmap);
+                // 使用 post 方法在主线程中更新 ImageView
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                    }
+                });
+            }
+        };
+
+        // 启动新线程执行 Runnable
+        new Thread(runnable).start();
+    }
+
     // 切换帧
-    private void SwichFrame()
-    {
+    private void SwichFrame() {
         Title.setVisibility(View.GONE);
         Choose.setVisibility(View.VISIBLE);
     }
 
     private void SwichFlash() {
 
-            switch (mFlashMode) {
-                case 0:
-                    mFlashMode = 1;
-                    falsh_switch.setImageResource(R.drawable.falshlightaout);
-                    // 设置闪光灯模式为自动
-                    previewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
-                    try {
-                        captureSession.setRepeatingRequest(
-                                previewRequestBuilder.build(),
-                                mPreCaptureCallback, null);
-                    } catch (CameraAccessException e) {
-                        e.printStackTrace();
-                        return;
-                    }
+        switch (mFlashMode) {
+            case 0:
+                mFlashMode = 1;
+                falsh_switch.setImageResource(R.drawable.falshlightaout);
+                // 设置闪光灯模式为自动
+                previewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
+                try {
+                    captureSession.setRepeatingRequest(
+                            previewRequestBuilder.build(),
+                            mPreCaptureCallback, null);
+                } catch (CameraAccessException e) {
+                    e.printStackTrace();
+                    return;
+                }
 
-                    break;
-                case 1:
-                    mFlashMode = 2;
-                    falsh_switch.setImageResource(R.drawable.falshlightcopen);
+                break;
+            case 1:
+                mFlashMode = 2;
+                falsh_switch.setImageResource(R.drawable.falshlightcopen);
 
-                    break;
-                case 2:
-                    mFlashMode = 3;
-                    falsh_switch.setImageResource(R.drawable.falshlightclose);
-                    // 设置闪光灯模式为自动
-                    previewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
-                    previewRequestBuilder.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_OFF);
+                break;
+            case 2:
+                mFlashMode = 3;
+                falsh_switch.setImageResource(R.drawable.falshlightclose);
+                // 设置闪光灯模式为自动
+                previewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
+                previewRequestBuilder.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_OFF);
 
-                    try {
-                        captureSession.setRepeatingRequest(
-                                previewRequestBuilder.build(),
-                                mPreCaptureCallback, null);
-                    } catch (CameraAccessException e) {
-                        e.printStackTrace();
-                        return;
-                    }
-                    break;
-                case 3:
-                    mFlashMode = 0;
-                    falsh_switch.setImageResource(R.drawable.flashlight);
-                    // 设置闪光灯模式为常亮
-                    previewRequestBuilder.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_TORCH);
-                    try {
-                        captureSession.setRepeatingRequest(
-                                previewRequestBuilder.build(),
-                                mPreCaptureCallback, null);
-                    } catch (CameraAccessException e) {
-                        e.printStackTrace();
-                    }
-            }
+                try {
+                    captureSession.setRepeatingRequest(
+                            previewRequestBuilder.build(),
+                            mPreCaptureCallback, null);
+                } catch (CameraAccessException e) {
+                    e.printStackTrace();
+                    return;
+                }
+                break;
+            case 3:
+                mFlashMode = 0;
+                falsh_switch.setImageResource(R.drawable.flashlight);
+                // 设置闪光灯模式为常亮
+                previewRequestBuilder.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_TORCH);
+                try {
+                    captureSession.setRepeatingRequest(
+                            previewRequestBuilder.build(),
+                            mPreCaptureCallback, null);
+                } catch (CameraAccessException e) {
+                    e.printStackTrace();
+                }
         }
+    }
 
-        private void StrongFlash()
-        {
-            previewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_ALWAYS_FLASH);
-            try {
-                captureSession.setRepeatingRequest(
-                        previewRequestBuilder.build(),
-                        mPreCaptureCallback, null);
-            } catch (CameraAccessException e) {
-                e.printStackTrace();
-            }
+    private void StrongFlash() {
+        previewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_ALWAYS_FLASH);
+        try {
+            captureSession.setRepeatingRequest(
+                    previewRequestBuilder.build(),
+                    mPreCaptureCallback, null);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
         }
-
+    }
 
 
     private void setFlashMode(int mode) {
         if (previewRequestBuilder == null || captureSession == null) {
-           // Log.e(TAG, "Capture request builder or capture session is not initialized.");
+            // Log.e(TAG, "Capture request builder or capture session is not initialized.");
             return;
         }
 
@@ -552,7 +582,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             // 更新 CaptureSession
             captureSession.setRepeatingRequest(previewRequestBuilder.build(), null /* Session state callback */, null /* Handler */);
         } catch (CameraAccessException e) {
-           // Log.e(TAG, "Camera access exception while setting flash mode.", e);
+            // Log.e(TAG, "Camera access exception while setting flash mode.", e);
         }
     }
 
@@ -570,7 +600,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             captureSession.close();
             captureSession = null;
         }
-        isRecording=false;
+        isRecording = false;
         // 清空 surfaces 集合
         surfaces.clear();
 
@@ -587,7 +617,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         timerText.setText("00:00");
         //将时间置零
         seconds = 0;
-        Log.d("stopRecordingVideo",newroidPath);
+        Log.d("stopRecordingVideo", newroidPath);
         // 刷新媒体库
         MediaScannerConnection.scanFile(this, new String[]{newroidPath}, null, null);
         // 发送广播通知媒体库更新
@@ -615,8 +645,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             captureSession.setRepeatingRequest(recordRequestBuilder.build(), null, null);
             isRecording = true;
 
-           // private ImageView record, switch_camera, capture,mPictureIv,falsh_switch;
-           // private TextView switch_frame,void_quality,timerText;
+            // private ImageView record, switch_camera, capture,mPictureIv,falsh_switch;
+            // private TextView switch_frame,void_quality,timerText;
             timerText.setVisibility(View.VISIBLE);
             switch_camera.setVisibility(View.GONE);
             mPictureIv.setVisibility(View.GONE);
@@ -630,7 +660,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 public void run() {
                     try {
                         // 等待一秒
-                        Thread.sleep(1000);
+                        sleep(1000);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
@@ -642,9 +672,10 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             e.printStackTrace();
         }
     }
+
     // 启动计时器
     private void startTimer() {
-         runnable = new Runnable() {
+        runnable = new Runnable() {
             @Override
             public void run() {
                 seconds++;
@@ -653,7 +684,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 handler.postDelayed(this, 1000);
             }
         };
-         // 开始计时
+        // 开始计时
         handler.post(runnable);
     }
 
@@ -664,8 +695,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             maskView.setBackgroundColor(Color.BLACK); // 设置背景色为黑色
             maskView.setAlpha(0f); // 初始透明度为0
 
-            int width =previewSize.getWidth();
-            int height =previewSize.getHeight();
+            int width = previewSize.getWidth();
+            int height = previewSize.getHeight();
 
             // 设置蒙版视图的布局参数
             FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(width, height);
@@ -696,7 +727,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         }
     }
 
-    private void SwichCamera(View maskView ) {
+    private void SwichCamera(View maskView) {
         // 切换摄像头
         closeCamera();
         cameraId = "1".equals(cameraId) ? "0" : "1";
@@ -733,7 +764,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     private class ImageSaveTask extends AsyncTask<Image, Void, Bitmap> {
         // 执行耗时操作
         @Override
-        protected Bitmap doInBackground(Image ... images) {
+        protected Bitmap doInBackground(Image... images) {
             ByteBuffer buffer = images[0].getPlanes()[0].getBuffer();
             byte[] bytes = new byte[buffer.remaining()];
             buffer.get(bytes);
@@ -747,13 +778,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 ImageUtils.saveImage(bytes);
             }
             images[0].close();
-            return ImageUtils.getLatestThumbBitmap(getInstance());
-        }
-
-        // 执行完成后
-        @Override
-        protected void onPostExecute(Bitmap bitmap) {
-            mPictureIv.setImageBitmap(bitmap);
+            return getLatestThumbBitmap(getInstance());
         }
     }
 
@@ -766,6 +791,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         ORIENTATIONS.append(Surface.ROTATION_180, 270);
         ORIENTATIONS.append(Surface.ROTATION_270, 180);
     }
+
     // 拍照
     private void takePicture(ImageReader.OnImageAvailableListener onImageAvailableListener) {
         try {
@@ -794,11 +820,9 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
     private void takePicture() {
         try {
-                if(mFlashMode==2)
-                {
-                    StrongFlash();
-                }
-           // mImageReader.setOnImageAvailableListener(onImageAvailableListener, null);
+            if (mFlashMode == 2) {
+                StrongFlash();
+            }
             // 创建捕获请求
             CaptureRequest.Builder captureBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
             // 设置预览输出的Surface
@@ -809,16 +833,24 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             captureBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_AUTO);
             // 自动曝光
             captureBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
-            // 设置照片的方向
+            // 获取设备方向
             int rotation = getWindowManager().getDefaultDisplay().getRotation();
+            //int rotation=getRotationDegrees();
+            if(isFrontCamera())
+            {
+                rotation = (rotation+180)%360;
+            }
+            Log.d("--CameraActivity--", "rotation:" + rotation);
             // 根据设备方向计算设置照片的方向
-            captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, ORIENTATIONS.get(rotation));
+            captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, rotation+90);
             // 捕获一帧图像
             captureSession.capture(captureBuilder.build(), null, null);
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
     }
+
+
 
 
     /*
@@ -833,11 +865,13 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
             return true;
         }
+
         //
         @Override
         public void onShowPress(MotionEvent e) {
             // 不做任何操作
         }
+
         //
         @Override
         public boolean onSingleTapUp(MotionEvent e) {
@@ -852,16 +886,14 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
             if (Math.abs(deltaY) < Math.abs(deltaX)) { // 确保水平滑动
                 if (deltaX > DISTANCE_LIMIT) {
-                    Log.d("--CameraActivity--", "左滑" );
-                   // Layout_Switch(mCustomViewL.getIndex());
-                    if(mCustomViewL.colorState==1)
-                    {
+                    Log.d("--CameraActivity--", "左滑");
+                    // Layout_Switch(mCustomViewL.getIndex());
+                    if (mCustomViewL.colorState == 1) {
                         mCustomViewL.scrollRight();
                     }
                 } else if (deltaX < -DISTANCE_LIMIT) {
-                    Log.d("--CameraActivity--", "右滑" );
-                    if(mCustomViewL.colorState==0)
-                    {
+                    Log.d("--CameraActivity--", "右滑");
+                    if (mCustomViewL.colorState == 0) {
                         mCustomViewL.scrollLeft();
                     }
                 }
@@ -869,6 +901,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
             return true;
         }
+
         //
         @Override
         public void onLongPress(@NonNull MotionEvent e) {
@@ -886,19 +919,17 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         return mGestureDetector.onTouchEvent(event);
     }
 
-    void Layout_Switch(int colorState)
-    {
+    void Layout_Switch(int colorState) {
         record.setVisibility(View.GONE);
         capture.setVisibility(View.GONE);
         switch_frame.setVisibility(View.GONE);
         void_quality.setVisibility(View.GONE);
         falsh_switch.setVisibility(View.GONE);
-        if(colorState==1)
-        {
+        if (colorState == 1) {
             record.setVisibility(View.VISIBLE);
             void_quality.setVisibility(View.VISIBLE);
             falsh_switch.setVisibility(View.GONE);
-        }else {
+        } else {
             capture.setVisibility(View.VISIBLE);
             switch_frame.setVisibility(View.VISIBLE);
             falsh_switch.setVisibility(View.VISIBLE);
@@ -966,7 +997,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
         try {
             // 获取指定摄像头的特性
-             characteristics = manager.getCameraCharacteristics(cameraId);
+            characteristics = manager.getCameraCharacteristics(cameraId);
             // 获取摄像头支持的配置属性
             StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
             // 获取摄像头支持的最大尺寸
@@ -975,7 +1006,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             Size largest = Collections.max(Arrays.asList(map.getOutputSizes(ImageFormat.JPEG)), new CompareSizesByArea());
             Log.d("--openCamera--", "largest.getWidth():" + largest.getWidth() + " largest.getHeight():" + largest.getHeight());
             //largest=new Size(1,1);
-            Log.d("--openCamera--", "largest.getWidth():" + largest.getWidth()+ " largest.getHeight():" + largest.getHeight());
+            Log.d("--openCamera--", "largest.getWidth():" + largest.getWidth() + " largest.getHeight():" + largest.getHeight());
             // 获取最佳的预览尺寸
             previewSize = chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class), width, height, largest);
             Log.d("--openCamera--", "previewSize.getWidth():" + previewSize.getWidth() + " previewSize.getHeight():" + previewSize.getHeight());
@@ -1120,10 +1151,9 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     }
 
     private void stopCaptureSessionAsync() {
-        if(isRunning)
-        {
-        isRunning = false;
-        handler.removeCallbacksAndMessages(null);
+        if (isRunning) {
+            isRunning = false;
+            handler.removeCallbacksAndMessages(null);
         }
     }
 
@@ -1143,7 +1173,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
         //添加录制Surface
         initRecording();// 初始化录制
-       // Toast.makeText(this, "初始化录制", Toast.LENGTH_SHORT).show();
+        // Toast.makeText(this, "初始化录制", Toast.LENGTH_SHORT).show();
         surfaces.add(mMediaRecorder.getSurface());
 
 
@@ -1209,7 +1239,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             // 发送广播通知媒体库更新
             sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(new File(filePath))));
             // 显示最近一次拍照的图片
-            mPictureIv.setImageBitmap(ImageUtils.getLatestThumbBitmap(this));
+            mPictureIv.setImageBitmap(getLatestThumbBitmap(this));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -1243,11 +1273,11 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             //currentPath=recorderPath;
         }
 
-
-        Previous_recorderPath=recorderPath;
+        Previous_recorderPath = recorderPath;
         // 记录日志，用于调试确认视频文件路径
         Log.e("initRecording", "视频路径：" + recorderPath);
-        newroidPath=recorderPath;
+        newroidPath = recorderPath;
+
         // 初始化MediaRecorder对象
         mMediaRecorder = new MediaRecorder();
         // 设置音频源为麦克风
@@ -1268,8 +1298,10 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         mMediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
         // 设置音频编码格式为AAC，提供较好的音频质量
         mMediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+
         // 设置录制视频的方向
-        int rotation = getRotationDegrees(); // 假设这个方法返回当前设备的方向
+        int rotation = getRotationDegrees();
+
         mMediaRecorder.setOrientationHint(rotation);
         try {
             mMediaRecorder.prepare();
@@ -1278,10 +1310,33 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         }
     }
 
+    boolean isFrontCamera() {
+        return cameraId.equals("1");
+    }
+
+
     private int getRotationDegrees() {
-        // 这个方法需要根据实际情况来实现，获取设备当前的方向
-        // 例如，你可以使用SensorManager来获取方向
-        // 这里只是一个示例值
-        return 0;
+        int rotation = this.getWindowManager().getDefaultDisplay().getRotation();
+        switch (rotation) {
+            case Surface.ROTATION_90:
+                rotation = 0;
+                break;
+            case Surface.ROTATION_180:
+                rotation = 180;
+                break;
+            case Surface.ROTATION_270:
+                rotation = 270;
+                break;
+            default:
+                rotation = 90;
+                break;
+        }
+
+        // 根据摄像头位置调整角度
+        if (isFrontCamera()) {
+            rotation = (rotation + 180) % 360;
+        }
+
+        return rotation;
     }
 }

@@ -1,5 +1,4 @@
 apply plugin: 'com.android.application'
-apply plugin: 'com.neenbedankt.android-apt'
 
 android {
     compileSdkVersion 25
@@ -21,13 +20,16 @@ android {
 }
 
 dependencies {
-    compile fileTree(dir: 'libs', include: ['*.jar'])
-    androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    androidTestImplementation('com.android.support.test.espresso:espresso-core:2.2.2') {
         exclude group: 'com.android.support', module: 'support-annotations'
-    })
-    compile 'com.android.support:appcompat-v7:25.0.1'
-    testCompile 'junit:junit:4.12'
-    provided 'org.glassfish:javax.annotation:10.0-b28'
-    compile 'com.google.guava:guava:19.0'
-    compile "com.android.support:support-v13:25.0.1"
+    }
+    implementation 'androidx.appcompat:appcompat:1.2.0'
+    testImplementation 'junit:junit:4.12'
+    // provided 'org.glassfish:javax.annotation:10.0-b28' // 这行可以移除，除非有特定用途
+    implementation 'com.google.guava:guava:19.0'
+    implementation 'androidx.legacy:legacy-support-v13:1.0.0'
+
+    // 添加注解处理器配置，如果有需要
+    // annotationProcessor '你的注解处理器依赖'
 }

@@ -1,6 +1,7 @@
 package com.psb.my_appl;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
@@ -739,6 +740,7 @@ public class Camera2Fragment extends Fragment
         return inflater.inflate(R.layout.fragment_camera2, container, false);
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     @Override
     public void onViewCreated(final View view, Bundle savedInstanceState) {
         view.findViewById(R.id.capture).setOnClickListener(this);

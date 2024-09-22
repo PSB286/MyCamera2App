@@ -9,7 +9,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content">
 
-        <org.hunter.a361camera.widget.AutoFitTextureView
+        <com.psb.my_appl.AutoFitTextureView
             android:id="@+id/texture_view_camera2"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"/>
