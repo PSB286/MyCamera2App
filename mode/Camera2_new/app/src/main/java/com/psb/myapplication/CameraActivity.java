@@ -31,6 +31,7 @@ import android.hardware.camera2.CaptureResult;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
+import android.media.MediaActionSound;
 import android.media.MediaRecorder;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
@@ -55,6 +56,8 @@ import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -127,6 +130,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     private short mFlashMode = 3;
     private CameraCaptureSession.CaptureCallback mPreCaptureCallback;
     private PopupWindow popupWindow;
+    public MediaActionSound mMediaActionSound;
+    public Animation btnAnimation;
 
 
     @SuppressLint("MissingInflatedId")
@@ -156,7 +161,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                         // 双指按下
                         isZooming = true;
                         mOldDistance = getFingerSpacing(event);
-                        Toast.makeText(getApplicationContext(), "双指按下", Toast.LENGTH_SHORT).show();
+                      // Toast.makeText(getApplicationContext(), "双指按下", Toast.LENGTH_SHORT).show();
                         // 隐藏聚焦图标
                         focusSunView.setVisibility(View.INVISIBLE);
                         break;
@@ -170,7 +175,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                                 mCameraProxy.handleZoom(false, mCameraDevice, characteristics, previewRequestBuilder);
                             }
                             mOldDistance = newDistance;
-                            Toast.makeText(getApplicationContext(), "双指移动", Toast.LENGTH_SHORT).show();
+                          //  Toast.makeText(getApplicationContext(), "双指移动", Toast.LENGTH_SHORT).show();
                         }
                         break;
                     case MotionEvent.ACTION_POINTER_UP:
@@ -337,6 +342,10 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         option1 = findViewById(R.id.option1);
         option2 = findViewById(R.id.option2);
         option3 = findViewById(R.id.option3);
+        //拍照声音
+        mMediaActionSound = new MediaActionSound();
+        //按钮动画
+        btnAnimation = AnimationUtils.loadAnimation(this, R.anim.btn_anim);
 
     }
 
@@ -371,16 +380,21 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
     // 初始化点击监听器
     private void initClickListener() {
+
         // 录像按钮
         record.setOnClickListener(v -> {
             if (v.getId() == R.id.recordvideo) {
                 if (!isRecording) {
-                    Toast.makeText(CameraActivity.this, "点击了录像按钮", Toast.LENGTH_SHORT).show();
+                   // Toast.makeText(CameraActivity.this, "点击了录像按钮", Toast.LENGTH_SHORT).show();
                     startRecordingVideo();
+                    //播放录像声音
+                    mMediaActionSound.play(MediaActionSound.START_VIDEO_RECORDING);
                 } else {
                     try {
-                        Toast.makeText(CameraActivity.this, "停止录像按钮", Toast.LENGTH_SHORT).show();
+                      //  Toast.makeText(CameraActivity.this, "停止录像按钮", Toast.LENGTH_SHORT).show();
                         stopRecordingVideo();
+                        //录像结束声音
+                        mMediaActionSound.play(MediaActionSound.STOP_VIDEO_RECORDING);
                        mPictureIv.setImageBitmap(getLatestThumbBitmap(this));
                        // ImageUtils.setLatestThumbBitmapAsync(mPictureIv, CameraActivity.this);
                     } catch (CameraAccessException e) {
@@ -402,10 +416,13 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         // 拍照按钮
         capture.setOnClickListener(v -> {
             if (v.getId() == R.id.capture) {
-                Toast.makeText(CameraActivity.this, "点击了拍照按钮", Toast.LENGTH_SHORT).show();
+              //  Toast.makeText(CameraActivity.this, "点击了拍照按钮", Toast.LENGTH_SHORT).show();
                 takePicture();
                // mPictureIv.setImageBitmap(getLatestThumbBitmap(this));
                 setLatestThumbBitmapAsync(mPictureIv, this);
+                //设置拍照动画
+                captureTouchListener();
+                mMediaActionSound.play(MediaActionSound.SHUTTER_CLICK); // 播放拍照声音
             }
         });
 
@@ -470,6 +487,25 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
     }
 
+    // 拍照动画
+    @SuppressLint("ClickableViewAccessibility")
+    private void captureTouchListener() {
+        capture.setOnTouchListener(new View.OnTouchListener() {
+            private boolean isZooming = false; // 标记是否正在缩放
+
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                switch (event.getAction()) {
+                    // 按下
+                    case MotionEvent.ACTION_DOWN:
+                        capture.startAnimation(btnAnimation); //拍照按钮动画
+                }
+                return false;
+            }
+            }
+        );
+    }
+
     public static void setLatestThumbBitmapAsync(final ImageView imageView, final Context context) {
         // 创建一个 Handler，用于在主线程中更新 UI
         final Handler handler = new Handler(Looper.getMainLooper());
@@ -485,11 +521,11 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                     throw new RuntimeException(e);
                 }
                 Bitmap bitmap = getLatestThumbBitmap(context);
-                imageView.setImageBitmap(bitmap);
                 // 使用 post 方法在主线程中更新 ImageView
                 handler.post(new Runnable() {
                     @Override
                     public void run() {
+                        imageView.setImageBitmap(bitmap);
                     }
                 });
             }
@@ -1238,8 +1274,6 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             MediaScannerConnection.scanFile(this, new String[]{filePath}, null, null);
             // 发送广播通知媒体库更新
             sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(new File(filePath))));
-            // 显示最近一次拍照的图片
-            mPictureIv.setImageBitmap(getLatestThumbBitmap(this));
         } catch (IOException e) {
             e.printStackTrace();
         }

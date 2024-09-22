@@ -305,10 +305,15 @@ public class PhotoMode implements IMode{
 
     @Override
     public void cameraSwitchMode() {
+        //切换到拍照模式
         openCamera(textureView.getWidth(),textureView.getHeight());
+        //切换到录像模式
         capture.setVisibility(View.VISIBLE);
+        //启用拍照按钮
         capture.setEnabled(true);
+        //启用AspectRatio
         mAspectRatio.setVisibility(View.VISIBLE);
+        //
         mAspectRatio.setEnabled(true);
 
     }

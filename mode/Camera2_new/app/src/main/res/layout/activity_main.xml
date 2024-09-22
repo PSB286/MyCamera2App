@@ -52,11 +52,11 @@
 
     <ImageView
         android:id="@+id/picture_iv"
-        android:layout_width="60dp"
-        android:layout_height="60dp"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
         android:layout_gravity="bottom"
         android:layout_marginStart="45dp"
-        android:layout_marginBottom="64dp"
+        android:layout_marginBottom="69dp"
         android:scaleType="centerCrop" />
 
     <ImageView
@@ -65,7 +65,7 @@
         android:layout_height="45dp"
         android:layout_gravity="bottom|center"
         android:layout_marginStart="100dp"
-        android:layout_marginBottom="64dp"
+        android:layout_marginBottom="76.5dp"
         android:src="@drawable/switch_camera"
         tools:ignore="SpeakableTextPresentCheck,TouchTargetSizeCheck" />
 

@@ -148,7 +148,6 @@ public class ImageUtils {
             Log.d("--Bitmap--", "获取视频缩略图:"+bitmap);
         }
         videoCursor.close();
-
         }
         else {
         // 获取图片的 URI
@@ -173,6 +172,5 @@ public class ImageUtils {
         }
         return bitmap;
     }
-
 
 }

@@ -73,12 +73,19 @@ public class MainActivity extends Activity {
 
         //点击拍照按钮，执行photoMode
         capbtn.setOnClickListener(view -> {
+            //拍照模式
             photoMode.cameraSwitchMode();
+            //录像模式
             videoMode.record.setEnabled(false);
+            //录像模式
             videoMode.record.setVisibility(View.GONE);
+            //录像模式
             videoMode.mVideoQuality.setVisibility(View.GONE);
+            //录像模式
             videoMode.mVideoQuality.setEnabled(false);
+            //拍照模式
             capbtn.setTextColor(Color.YELLOW);
+            //拍照模式
             vidbtn.setTextColor(Color.WHITE);
 
         });
@@ -167,7 +174,9 @@ public class MainActivity extends Activity {
                 startBlur();
             });
             photoMode.capture.setOnClickListener(view ->{
+                //拍照
                 photoMode.captureStillPicture();
+                //拍照动画
                 photoMode.capture.startAnimation(photoMode.btnAnimation); //拍照按钮动画
             });
         } else {

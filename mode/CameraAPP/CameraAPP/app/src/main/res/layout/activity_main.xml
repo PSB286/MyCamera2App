@@ -18,14 +18,16 @@
             android:background="@drawable/ic_preview"
             android:scaleType="centerCrop"
             android:layout_gravity="start|bottom"/>
+
         <Button
             android:id="@+id/capture"
-            android:layout_width="60dp"
+            android:layout_width="48dp"
             android:layout_height="60dp"
-            android:layout_marginBottom="90dp"
-            android:visibility="visible"
             android:layout_gravity="center|bottom"
-            android:background="@drawable/ic_take_picture" />
+            android:layout_marginBottom="90dp"
+            android:background="@drawable/ic_take_picture"
+            android:visibility="visible" />
+
         <ImageButton
             android:id="@+id/switchCameraId"
             android:layout_width="50dp"
