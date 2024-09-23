@@ -379,6 +379,10 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         option3 = findViewById(R.id.option3);
         option4= findViewById(R.id.option4);
         option5 = findViewById(R.id.option5);
+        option2.setEnabled(false);
+        option2.setTextColor(Color.YELLOW);
+        option5.setEnabled(false);
+        option5.setTextColor(Color.YELLOW);
         //拍照声音
         mMediaActionSound = new MediaActionSound();
         //按钮动画
@@ -499,6 +503,12 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
         option1.setOnClickListener(v -> {
             if (v.getId() == R.id.option1) {
+                option1.setEnabled(false);
+                option2.setEnabled(true);
+                option3.setEnabled(true);
+                option1.setTextColor(Color.YELLOW);
+                option2.setTextColor(Color.WHITE);
+                option3.setTextColor(Color.WHITE);
                 switch_frame.setText(option1.getText().toString());
                 Title.setVisibility(View.VISIBLE);
                 Choose.setVisibility(View.GONE);
@@ -510,6 +520,12 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
         option2.setOnClickListener(v -> {
             if (v.getId() == R.id.option2) {
+                option1.setEnabled(true);
+                option1.setTextColor(Color.WHITE);
+                option2.setEnabled(false);
+                option3.setEnabled(true);
+                option3.setTextColor(Color.WHITE);
+                option2.setTextColor(Color.YELLOW);
                 switch_frame.setText(option2.getText().toString());
                 Title.setVisibility(View.VISIBLE);
                 Choose.setVisibility(View.GONE);
@@ -521,14 +537,17 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
         option3.setOnClickListener(v -> {
             if (v.getId() == R.id.option3) {
-                Log.d("--option3--", "option3");
+                option1.setEnabled(true);
+                option1.setTextColor(Color.WHITE);
+                option2.setEnabled(true);
+                option2.setTextColor(Color.WHITE);
+                option3.setEnabled(false);
+                option3.setTextColor(Color.YELLOW);
                 switch_frame.setText(option3.getText().toString());
                 Choose.setVisibility(View.GONE);
                 Title.setVisibility(View.VISIBLE);
-                Log.d("--option3--", largest.toString());
                 largest = new Size(16,9);
                 isCapture=true;
-                Log.d("--option3--", largest.toString());
                 closeCamera();
                 openCamera(mTextureView.getWidth(), mTextureView.getHeight());
             }
@@ -537,6 +556,10 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         option4.setOnClickListener(v -> {
            if (v.getId() == R.id.option4)
            {
+               option4.setEnabled(false);
+               option5.setEnabled(true);
+               option5.setTextColor(Color.WHITE);
+               option4.setTextColor(Color.YELLOW);
                void_quality.setText(option4.getText().toString());
                Choose2.setVisibility(View.GONE);
                Title.setVisibility(View.VISIBLE);
@@ -550,6 +573,11 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         option5.setOnClickListener(v -> {
             if (v.getId() == R.id.option5)
             {
+                option4.setEnabled(true);
+                option4.setTextColor(Color.WHITE);
+                option5.setEnabled(false);
+                option5.setTextColor(Color.YELLOW);
+
                 void_quality.setText(option5.getText().toString());
                 Choose2.setVisibility(View.GONE);
                 Title.setVisibility(View.VISIBLE);
@@ -1062,11 +1090,12 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             Title.setVisibility(View.VISIBLE);
             switch_frame.setVisibility(View.VISIBLE);
             falsh_switch.setVisibility(View.VISIBLE);
-            previewSize=new Size(1280,720);
-            closeCamera();
-            openCamera(mTextureView.getWidth(), mTextureView.getHeight());
+           // previewSize=new Size(1280,720);
             isRecord4=false;
             isRecord5=false;
+            closeCamera();
+            openCamera(mTextureView.getWidth(), mTextureView.getHeight());
+
         }
 
     }
