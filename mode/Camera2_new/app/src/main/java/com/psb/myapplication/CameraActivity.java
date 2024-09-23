@@ -861,12 +861,9 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 mRootLayout.removeView(maskView); // 移除蒙版视图
             }
         };
-
-
 // 执行延迟任务
         handler.postDelayed(removeMaskRunnable, 870); // 延迟 1000 毫秒（1 秒）
     }
-
 
     private void closeCamera() {
         if (mCameraDevice != null) {
@@ -1042,8 +1039,11 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         switch_frame.setVisibility(View.GONE);
         void_quality.setVisibility(View.GONE);
         falsh_switch.setVisibility(View.GONE);
+        Choose2.setVisibility(View.GONE);
+        Choose.setVisibility(View.GONE);
         if (colorState == 1) {
             record.setVisibility(View.VISIBLE);
+            Title.setVisibility(View.VISIBLE);
             void_quality.setVisibility(View.VISIBLE);
             falsh_switch.setVisibility(View.GONE);
             isLayout=true;
@@ -1051,6 +1051,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             openCamera(mTextureView.getWidth(), mTextureView.getHeight());
         } else {
             capture.setVisibility(View.VISIBLE);
+            Title.setVisibility(View.VISIBLE);
             switch_frame.setVisibility(View.VISIBLE);
             falsh_switch.setVisibility(View.VISIBLE);
             previewSize=new Size(1280,720);
