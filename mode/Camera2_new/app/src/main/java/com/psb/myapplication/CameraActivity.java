@@ -845,6 +845,12 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         // 清空 surfaces 集合
         surfaces.clear();
         openCamera(mTextureView.getWidth(), mTextureView.getHeight());
+        if(Objects.equals(cameraId, "1")) {
+            falsh_switch.setVisibility(View.GONE);
+        }
+        else {
+            falsh_switch.setVisibility(View.VISIBLE);
+        }
         //开启一个新的线线程实现移除蒙版，并且延迟600毫秒，等待摄像头切换成功
         // 创建 Handler
         Handler handler = new Handler();
@@ -858,7 +864,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
 
 // 执行延迟任务
-        handler.postDelayed(removeMaskRunnable, 650); // 延迟 1000 毫秒（1 秒）
+        handler.postDelayed(removeMaskRunnable, 870); // 延迟 1000 毫秒（1 秒）
     }
 
 
