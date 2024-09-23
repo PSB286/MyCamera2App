@@ -136,6 +136,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     boolean isCapture =  false;
     boolean isRecord4 = false;
     boolean isRecord5 = false;
+    boolean isLayout = false;
 
 
     @SuppressLint("MissingInflatedId")
@@ -336,7 +337,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         // 显示最近
         mPictureIv = findViewById(R.id.picture_iv);
 //       // 显示最近一次拍照的图片
-        mPictureIv.setImageBitmap(getLatestThumbBitmap(this));
+      //  mPictureIv.setImageBitmap(getLatestThumbBitmap(this));
         // 初始化焦点光圈
         focusSunView = findViewById(R.id.focus_sun_view);
         Previous_recorderPath = null;
@@ -1010,11 +1011,17 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             record.setVisibility(View.VISIBLE);
             void_quality.setVisibility(View.VISIBLE);
             falsh_switch.setVisibility(View.GONE);
+            isLayout=true;
+            previewSize=new Size(1280,720);
+            openCamera(mTextureView.getWidth(), mTextureView.getHeight());
         } else {
             capture.setVisibility(View.VISIBLE);
             switch_frame.setVisibility(View.VISIBLE);
             falsh_switch.setVisibility(View.VISIBLE);
+            previewSize=new Size(1280,720);
+            openCamera(mTextureView.getWidth(), mTextureView.getHeight());
         }
+
     }
 
 
@@ -1106,6 +1113,11 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             {
                 previewSize = new Size(1280,720);
                 isRecord5=false;
+            }
+            if(isLayout)
+            {
+                previewSize = new Size(1280,720);
+                isLayout=false;
             }
             Position_frame(previewSize);
             // 横竖屏判断

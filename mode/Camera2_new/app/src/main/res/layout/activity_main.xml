@@ -122,9 +122,8 @@
                 android:textColor="@android:color/white"
                 android:padding="10dp"
                 android:clickable="true"
-                android:gravity="center"
                 android:focusable="true"
-                android:focusableInTouchMode="true"
+                android:gravity="center"
                 android:background="?attr/selectableItemBackground"/>
 
             <TextView
@@ -137,9 +136,9 @@
                 android:textColor="@android:color/white"
                 android:padding="10dp"
                 android:clickable="true"
-                android:gravity="center"
                 android:focusable="true"
-                android:focusableInTouchMode="true" />
+                android:gravity="center"
+                android:background="?attr/selectableItemBackground"/>
 
 
         </LinearLayout>
@@ -182,10 +181,10 @@
                 android:textColor="@android:color/white"
                 android:padding="10dp"
                 android:clickable="true"
-                android:gravity="center"
                 android:focusable="true"
-                android:focusableInTouchMode="true"
-                android:background="?attr/selectableItemBackground"/>
+                android:gravity="center"
+                android:background="?attr/selectableItemBackground"
+                tools:ignore="DuplicateIds" />
 
 
 
