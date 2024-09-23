@@ -503,6 +503,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 Title.setVisibility(View.VISIBLE);
                 Choose.setVisibility(View.GONE);
                 largest = new Size(1,1);
+                closeCamera();
                 openCamera(mTextureView.getWidth(), mTextureView.getHeight());
             }
         });
@@ -513,6 +514,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 Title.setVisibility(View.VISIBLE);
                 Choose.setVisibility(View.GONE);
                 largest = new Size(4,3);
+                closeCamera();
                 openCamera(mTextureView.getWidth(), mTextureView.getHeight());
             }
         });
@@ -527,6 +529,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 largest = new Size(16,9);
                 isCapture=true;
                 Log.d("--option3--", largest.toString());
+                closeCamera();
                 openCamera(mTextureView.getWidth(), mTextureView.getHeight());
             }
         });
@@ -538,6 +541,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                Choose2.setVisibility(View.GONE);
                Title.setVisibility(View.VISIBLE);
                isRecord4=true;
+               isRecord5=false;
+               closeCamera();
                openCamera(mTextureView.getWidth(), mTextureView.getHeight());
            }
         });
@@ -549,6 +554,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 Choose2.setVisibility(View.GONE);
                 Title.setVisibility(View.VISIBLE);
                 isRecord5=true;
+                isRecord4=false;
+                closeCamera();
                 openCamera(mTextureView.getWidth(), mTextureView.getHeight());
             }
         });
@@ -839,11 +846,12 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     }
 
     private void SwichCamera(View maskView) {
-        // 切换摄像头
-        closeCamera();
+
         cameraId = "1".equals(cameraId) ? "0" : "1";
         // 清空 surfaces 集合
         surfaces.clear();
+        // 切换摄像头
+        closeCamera();
         openCamera(mTextureView.getWidth(), mTextureView.getHeight());
         if(Objects.equals(cameraId, "1")) {
             falsh_switch.setVisibility(View.GONE);
@@ -870,7 +878,6 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             mCameraDevice.close();
             mCameraDevice = null;
         }
-
     }
 
 
@@ -1047,7 +1054,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             void_quality.setVisibility(View.VISIBLE);
             falsh_switch.setVisibility(View.GONE);
             isLayout=true;
-            previewSize=new Size(1280,720);
+            isRecord5=true;
+            closeCamera();
             openCamera(mTextureView.getWidth(), mTextureView.getHeight());
         } else {
             capture.setVisibility(View.VISIBLE);
@@ -1055,7 +1063,10 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             switch_frame.setVisibility(View.VISIBLE);
             falsh_switch.setVisibility(View.VISIBLE);
             previewSize=new Size(1280,720);
+            closeCamera();
             openCamera(mTextureView.getWidth(), mTextureView.getHeight());
+            isRecord4=false;
+            isRecord5=false;
         }
 
     }
@@ -1143,12 +1154,14 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             if(isRecord4)
             {
                 previewSize = new Size(960,720);
-                isRecord4=false;
+                Log.d("--isCapture--", "width"+previewSize.getWidth()+" height:"+previewSize.getHeight());
+                //isRecord4=false;
             }
             if(isRecord5)
             {
                 previewSize = new Size(1280,720);
-                isRecord5=false;
+                Log.d("--isCapture--", "width"+previewSize.getWidth()+" height:"+previewSize.getHeight());
+                //isRecord5=false;
             }
             if(isLayout)
             {
