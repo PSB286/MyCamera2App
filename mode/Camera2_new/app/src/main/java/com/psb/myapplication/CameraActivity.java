@@ -18,6 +18,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.ImageFormat;
 import android.graphics.Matrix;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
@@ -28,6 +29,8 @@ import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CameraMetadata;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
+import android.hardware.camera2.TotalCaptureResult;
+import android.hardware.camera2.params.MeteringRectangle;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
@@ -137,6 +140,9 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     boolean isRecord4 = false;
     boolean isRecord5 = false;
     boolean isLayout = false;
+    boolean isClickFocus = false;
+    boolean initPreview=true;
+    CameraCaptureSession.StateCallback PreCaptureCallback;
 
 
     @SuppressLint("MissingInflatedId")
@@ -201,7 +207,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                         if (!isZooming && pointerCount == 1) {
                             // 点击对焦
                             // Toast.makeText(getApplicationContext(), "单指按下", Toast.LENGTH_SHORT).show();
-                            mCameraProxy.triggerFocusAtPoint((int) event.getX(), (int) event.getY(), previewSize.getWidth(), previewSize.getHeight(), previewRequestBuilder, captureSession);
+                            mCameraProxy.triggerFocusAtPoint((int) event.getX(), (int) event.getY(), mTextureView.getWidth(), mTextureView.getHeight(), previewRequestBuilder, captureSession);
+                           // triggerFocusAtPoint(event.getX(), event.getY(), previewSize.getWidth(), previewSize.getHeight());
                             focusSunView.setVisibility(View.VISIBLE);
                             // 设置焦点位置
                             float halfWidth = focusSunView.getWidth() / 2f;
@@ -224,6 +231,28 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 return true;
             }
         });
+    }
+
+    private void triggerFocusAtPoint(float x, float y, int width, int height) {
+        // 计算出在屏幕坐标系下的区域
+        Rect cropRegion = previewRequestBuilder.get(CaptureRequest.SCALER_CROP_REGION);
+        // 计算出在传感器坐标系下的区域
+        MeteringRectangle afRegion = mCameraProxy.getAFAERegion(x, y, width, height, 1f, cropRegion);
+        // ae的区域比af的稍大一点，聚焦的效果比较好
+        MeteringRectangle aeRegion = mCameraProxy.getAFAERegion(x, y, width, height, 1.5f, cropRegion);
+        // 设置对焦区域
+        previewRequestBuilder.set(CaptureRequest.CONTROL_AF_REGIONS, new MeteringRectangle[]{afRegion});
+        // 设置测光区域
+        previewRequestBuilder.set(CaptureRequest.CONTROL_AE_REGIONS, new MeteringRectangle[]{aeRegion});
+        // 设置对焦模式
+        previewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_AUTO);
+        // 开始对焦
+        previewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_START);
+        // 开始预取
+        previewRequestBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER, CameraMetadata.CONTROL_AE_PRECAPTURE_TRIGGER_START);
+        isClickFocus=true;
+        createCaptureSessionAsync();
+       // openCamera(mTextureView.getWidth(), mTextureView.getHeight());
     }
 
 
@@ -777,8 +806,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             maskView.setBackgroundColor(Color.BLACK); // 设置背景色为黑色
             maskView.setAlpha(0f); // 初始透明度为0
 
-            int width = previewSize.getWidth();
-            int height = previewSize.getHeight();
+            int width = mTextureView.getWidth();
+            int height = mTextureView.getHeight();
 
             // 设置蒙版视图的布局参数
             FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(width, height);
@@ -1357,15 +1386,41 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         previewRequestBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
         // 设置预览目标Surface
         previewRequestBuilder.addTarget(previewSurface);
-        // 创建预览请求
-        previewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
-        previewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
-        previewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
-        previewRequestBuilder.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_OFF);
-        previewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_START);
-        previewRequestBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER, CameraMetadata.CONTROL_AE_PRECAPTURE_TRIGGER_START);
+            // 创建预览请求
+            previewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+            // 设置自动曝光
+            previewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
+            // 设置自动白平衡
+            previewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
+            // 闪光灯
+            previewRequestBuilder.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_OFF);
+            if (!isClickFocus) {
+                // 自动对焦
+                previewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_START);
+            }
+            // 检测焦点状态
+            previewRequestBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER, CameraMetadata.CONTROL_AE_PRECAPTURE_TRIGGER_START);
+
+        mPreCaptureCallback=new CameraCaptureSession.CaptureCallback() {
+            @Override
+            public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull TotalCaptureResult result) {
+                // 对焦状态回调
+                //Log.d("onCaptureCompleted", "onCaptureCompleted: afState: " + result.get(CaptureResult.CONTROL_AF_STATE));
+                //Toast.makeText(CameraActivity.this, "对焦状态回调"+result.get(CaptureResult.CONTROL_AF_STATE), Toast.LENGTH_SHORT).show();
+               if(isClickFocus)
+               {
+                   try {
+                       process(result);
+                   } catch (CameraAccessException e) {
+                       throw new RuntimeException(e);
+                   }
+               }
+            }
+        };
+
+
         try {
-            cameraDevice.createCaptureSession(surfaces, new CameraCaptureSession.StateCallback() {
+            cameraDevice.createCaptureSession(surfaces,  PreCaptureCallback=new CameraCaptureSession.StateCallback() {
                 // 预览会话已创建
                 @Override
                 public void onConfigured(@NonNull CameraCaptureSession session) {
@@ -1380,6 +1435,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                     }
                 }
 
+
+
                 @Override
                 public void onConfigureFailed(@NonNull CameraCaptureSession session) {
                     // 预览会话创建失败
@@ -1387,6 +1444,41 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             }, null);
         } catch (CameraAccessException e) {
             e.printStackTrace();
+        }
+    }
+
+    private void process(TotalCaptureResult result) throws CameraAccessException {
+        if (result == null) {
+            Toast.makeText(this, "Result is null", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        // 获取焦点状态
+        Integer state = result.get(CaptureResult.CONTROL_AF_STATE);
+
+        if (state == null) {
+            Log.e("mAfCaptureCallback", "STATE is null");
+            Toast.makeText(this, "STATE is null", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Toast.makeText(this, "state: " + state, Toast.LENGTH_SHORT).show();
+        // 检查焦点状态
+        if (Objects.equals(state, CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED)
+                || Objects.equals(state, CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED)) {
+            Toast.makeText(this, "对焦成功", Toast.LENGTH_SHORT).show();
+            // 设置相关参数
+            previewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CaptureRequest.CONTROL_AF_TRIGGER_CANCEL);
+            // 设置对焦模式
+            previewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+            // 关闭自动曝光
+            previewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF);
+            // 启动预览
+            createCaptureSessionAsync();
+            //openCamera(mTextureView.getWidth(), mTextureView.getHeight());
+            isClickFocus=false;
+        } else {
+            // 对焦失败，记录日志并提示用户
+            Log.w("process", "对焦失败，状态：" + state);
+            Toast.makeText(this, "对焦失败，请调整相机位置或光线", Toast.LENGTH_SHORT).show();
         }
     }
 

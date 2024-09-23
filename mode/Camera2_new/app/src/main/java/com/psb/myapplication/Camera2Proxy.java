@@ -70,6 +70,7 @@ public class Camera2Proxy {
     private int mZoom = 0; // 0~mMaxZoom之间变化
     private float mStepWidth=30; // 每次改变的宽度大小
     private float mStepHeight=30; // 每次改变的高度大小
+    private CameraCaptureSession.CaptureCallback mAfCaptureCallback;
 
     /**
      * 打开摄像头的回调
@@ -424,7 +425,7 @@ public class Camera2Proxy {
         Log.d("handleZoom", "zoomRect: " + zoomRect);
         // 设置裁剪区域
         mPreviewRequestBuilder.set(CaptureRequest.SCALER_CROP_REGION, zoomRect);
-
+        //myapp.
         startPreview(); // 需要重新 start preview 才能生效
     }
     // 对焦
@@ -432,8 +433,10 @@ public class Camera2Proxy {
        // Log.d(TAG, "triggerFocusAtPoint (" + x + ", " + y + ")");
         mPreviewRequestBuilder=PreviewRequestBuilder;
         mCaptureSession=CaptureSession;
+        Log.d("triggerFocusAtPoint", "triggerFocusAtPoint: " + x + ", " + y);
         // 计算出在屏幕坐标系下的区域
         Rect cropRegion = mPreviewRequestBuilder.get(CaptureRequest.SCALER_CROP_REGION);
+        Log.d("triggerFocusAtPoint", "cropRegion: " + cropRegion);
         // 计算出在传感器坐标系下的区域
         MeteringRectangle afRegion = getAFAERegion(x, y, width, height, 1f, cropRegion);
         // ae的区域比af的稍大一点，聚焦的效果比较好
@@ -442,22 +445,77 @@ public class Camera2Proxy {
         mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_REGIONS, new MeteringRectangle[]{afRegion});
         // 设置测光区域
         mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_REGIONS, new MeteringRectangle[]{aeRegion});
+
         // 设置对焦模式
         mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_AUTO);
         // 开始对焦
         mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_START);
         // 开始预取
         mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER, CameraMetadata.CONTROL_AE_PRECAPTURE_TRIGGER_START);
+        //检测焦点状态
+      //  Log.d("triggerFocusAtPoint", "triggerFocusAtPoint: afState: 1" );
+        mAfCaptureCallback = new CameraCaptureSession.CaptureCallback() {
+            // 对焦状态回调
+            @Override
+            public void onCaptureCompleted(@NonNull CameraCaptureSession session,
+                                           @NonNull CaptureRequest request,
+                                           @NonNull TotalCaptureResult result) {
+                try {
+                    process(result);
+                } catch (CameraAccessException e) {
+                    throw new RuntimeException(e);
+                }
+            }
 
+        };
+     //   Log.d("mAfCaptureCallback", "1triggerFocusAtPoint: 2");
         try {
+           // Log.d("mAfCaptureCallback", "1triggerFocusAtPoint: 1");
             // 发送对焦请求
-            mCaptureSession.capture(mPreviewRequestBuilder.build(), mAfCaptureCallback, mBackgroundHandler);
+            mCaptureSession.capture(mPreviewRequestBuilder.build(), mAfCaptureCallback,null);
+          //  Log.d("triggerFocusAtPoint", "1triggerFocusAtPoint: 2");
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
     }
+
+    private void process(TotalCaptureResult result) throws CameraAccessException {
+        if (result == null) {
+            Toast.makeText(mActivity, "Result is null", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        // 获取焦点状态
+        Integer state = result.get(CaptureResult.CONTROL_AF_STATE);
+
+        if (state == null) {
+            Log.e("mAfCaptureCallback", "STATE is null");
+            Toast.makeText(mActivity, "STATE is null", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Toast.makeText(mActivity, "state: " + state, Toast.LENGTH_SHORT).show();
+        // 检查焦点状态
+//        if (Objects.equals(state, CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED)
+//                || Objects.equals(state, CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED)) {
+            Toast.makeText(mActivity, "对焦成功", Toast.LENGTH_SHORT).show();
+            // 设置相关参数
+            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CaptureRequest.CONTROL_AF_TRIGGER_CANCEL);
+            // 设置对焦模式
+            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+            // 关闭自动曝光
+            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF);
+            // 启动预览
+            startPreview();
+//        } else {
+//            // 对焦失败，记录日志并提示用户
+//            Log.w(TAG, "对焦失败，状态：" + state);
+//            Toast.makeText(mActivity, "对焦失败，请调整相机位置或光线", Toast.LENGTH_SHORT).show();
+//            //尝试重新对焦
+//            retryAutoFocus();
+//        }
+    }
+
     // 获取对焦区域
-    private MeteringRectangle getAFAERegion(float x, float y, int viewWidth, int viewHeight, float multiple, Rect cropRegion) {
+    MeteringRectangle getAFAERegion(float x, float y, int viewWidth, int viewHeight, float multiple, Rect cropRegion) {
         Log.v(TAG, "getAFAERegion enter");
         Log.d(TAG, "point: [" + x + ", " + y + "], viewWidth: " + viewWidth + ", viewHeight: " + viewHeight);
         Log.d(TAG, "multiple: " + multiple);
@@ -491,81 +549,84 @@ public class Camera2Proxy {
         return new MeteringRectangle(meteringRect, 1000);
     }
     // 对焦回调
-    private final CameraCaptureSession.CaptureCallback mAfCaptureCallback = new CameraCaptureSession.CaptureCallback() {
-
-        private void process(CaptureResult result) throws CameraAccessException {
-            if (result == null) {
-                Log.e(TAG, "CaptureResult is null");
-                Toast.makeText(mActivity, "Result is null", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            // 获取焦点状态
-            Integer state = result.get(CaptureResult.CONTROL_AF_STATE);
-            if (state == null) {
-                Log.e(TAG, "STATE is null");
-                Toast.makeText(mActivity, "STATE is null", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            Log.d(TAG, "CONTROL_AF_STATE: " + state);
-
-            // 显示进入 Process 的提示
-            Toast.makeText(mActivity, "进入Process", Toast.LENGTH_SHORT).show();
-
-            // 检查焦点状态
-            if (Objects.equals(state, CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED)
-                    || Objects.equals(state, CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED)) {
-                Toast.makeText(mActivity, "对焦成功", Toast.LENGTH_SHORT).show();
-                // 设置相关参数
-                mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CaptureRequest.CONTROL_AF_TRIGGER_CANCEL);
-                // 设置对焦模式
-                mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
-                // 关闭自动曝光
-                mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF);
-                // 启动预览
-                startPreview();
-           } else {
-                // 对焦失败，记录日志并提示用户
-                Log.w(TAG, "对焦失败，状态：" + state);
-                Toast.makeText(mActivity, "对焦失败，请调整相机位置或光线", Toast.LENGTH_SHORT).show();
-                 //尝试重新对焦
-              //  retryAutoFocus();
-            }
-        }
-
+//    private CameraCaptureSession.CaptureCallback mAfCaptureCallback = new CameraCaptureSession.CaptureCallback() {
+//
+//       // 对焦回调
+//        private void process(CaptureResult result) throws CameraAccessException {
+//            Log.d("mAfCaptureCallback", "process: ");
+//            if (result == null) {
+//                Toast.makeText(mActivity, "Result is null", Toast.LENGTH_SHORT).show();
+//                return;
+//            }
+//            // 获取焦点状态
+//            Integer state = result.get(CaptureResult.CONTROL_AF_STATE);
+//           // Log.d("mAfCaptureCallback", "process: oldstate: " + state);
+//            if (state == null) {
+//                Log.e("mAfCaptureCallback", "STATE is null");
+//                Toast.makeText(mActivity, "STATE is null", Toast.LENGTH_SHORT).show();
+//                return;
+//            }
+//            Log.d("mAfCaptureCallback", "oldCONTROL_AF_STATE: " + state);
+//
+//            // 显示进入 Process 的提示
+//            Toast.makeText(mActivity, "进入Process", Toast.LENGTH_SHORT).show();
+//
+//            // 检查焦点状态
+//            if (Objects.equals(state, CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED)
+//                    || Objects.equals(state, CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED)) {
+//                Toast.makeText(mActivity, "对焦成功", Toast.LENGTH_SHORT).show();
+//                // 设置相关参数
+//                mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CaptureRequest.CONTROL_AF_TRIGGER_CANCEL);
+//                // 设置对焦模式
+//                mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+//                // 关闭自动曝光
+//                mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF);
+//                // 启动预览
+//                startPreview();
+//           } else {
+//                // 对焦失败，记录日志并提示用户
+//                Log.w(TAG, "对焦失败，状态：" + state);
+//                Toast.makeText(mActivity, "对焦失败，请调整相机位置或光线", Toast.LENGTH_SHORT).show();
+//                 //尝试重新对焦
+//              //  retryAutoFocus();
+//            }
+//        }
+//
         private void retryAutoFocus() throws CameraAccessException {
             // 重新触发自动对焦
             mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CaptureRequest.CONTROL_AF_TRIGGER_START);
             // 提交新的请求
-            //mCaptureSession.setRepeatingRequest(mPreviewRequestBuilder.build(), this, null);
+
+            mCaptureSession.setRepeatingRequest(mPreviewRequestBuilder.build(), null, null);
             mCaptureSession.capture(mPreviewRequestBuilder.build(), mAfCaptureCallback, mBackgroundHandler);
         }
-
-        // ae
-        @Override
-        public void onCaptureProgressed(@NonNull CameraCaptureSession session,
-                                        @NonNull CaptureRequest request,
-                                        @NonNull CaptureResult partialResult) {
-            //Toast.makeText(mActivity, "--onCaptureProgressed--", Toast.LENGTH_SHORT).show();
-            try {
-                process(partialResult);
-            } catch (CameraAccessException e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-        // ae
-        @Override
-        public void onCaptureCompleted(@NonNull CameraCaptureSession session,
-                                       @NonNull CaptureRequest request,
-                                       @NonNull TotalCaptureResult result) {
-            //Toast.makeText(mActivity, "--onCaptureCompleted--", Toast.LENGTH_SHORT).show();
-            try {
-                process(result);
-            } catch (CameraAccessException e) {
-                throw new RuntimeException(e);
-            }
-        }
-    };
+//
+//        // ae
+////        @Override
+////        public void onCaptureProgressed(@NonNull CameraCaptureSession session,
+////                                        @NonNull CaptureRequest request,
+////                                        @NonNull CaptureResult partialResult) {
+////            //Toast.makeText(mActivity, "--onCaptureProgressed--", Toast.LENGTH_SHORT).show();
+////            try {
+////                process(partialResult);
+////            } catch (CameraAccessException e) {
+////                throw new RuntimeException(e);
+////            }
+////        }
+//
+//        // ae
+//        @Override
+//        public void onCaptureCompleted(@NonNull CameraCaptureSession session,
+//                                       @NonNull CaptureRequest request,
+//                                       @NonNull TotalCaptureResult result) {
+//            //Toast.makeText(mActivity, "--onCaptureCompleted--", Toast.LENGTH_SHORT).show();
+//            try {
+//                process(result);
+//            } catch (CameraAccessException e) {
+//                throw new RuntimeException(e);
+//            }
+//        }
+//    };
 
     // 开启后台线程
     private void startBackgroundThread() {
