@@ -7,12 +7,19 @@
     android:background="#050505"
     android:fitsSystemWindows="false">
 
+    <FrameLayout
+        android:id="@+id/container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginTop="0dp">
     <com.psb.myapplication.AutoFitTextureView
         android:id="@+id/texture"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_marginTop="100dp"
         android:backgroundTint="#0B0808" />
+    </FrameLayout>
+
 
     <com.psb.myapplication.FocusSunView
         android:id="@+id/focus_sun_view"
