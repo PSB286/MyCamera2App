@@ -143,6 +143,9 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     boolean isLayout = false;
     boolean isClickFocus = false;
     boolean initPreview=true;
+    boolean isSwichCamera=false;
+    boolean isOption=false;
+    boolean isLayoutSwich=false;
     CameraCaptureSession.StateCallback PreCaptureCallback;
 
 
@@ -453,6 +456,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         switch_camera.setOnClickListener(v -> {
             if (v.getId() == R.id.switch_camera) {
                 //Toast.makeText(CameraActivity.this, "点击了切换摄像头按钮", Toast.LENGTH_SHORT).show();
+                isSwichCamera=true;
                 switchCameraWithMaskAnimation();
                 //SwichCamera();
             }
@@ -514,8 +518,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 Title.setVisibility(View.VISIBLE);
                 Choose.setVisibility(View.GONE);
                 largest = new Size(1,1);
-                closeCamera();
-                openCamera(mTextureView.getWidth(), mTextureView.getHeight());
+                isOption=true;
+                switchCameraWithMaskAnimation();
             }
         });
 
@@ -531,8 +535,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 Title.setVisibility(View.VISIBLE);
                 Choose.setVisibility(View.GONE);
                 largest = new Size(4,3);
-                closeCamera();
-                openCamera(mTextureView.getWidth(), mTextureView.getHeight());
+                isOption=true;
+                switchCameraWithMaskAnimation();
             }
         });
 
@@ -549,8 +553,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 Title.setVisibility(View.VISIBLE);
                 largest = new Size(16,9);
                 isCapture=true;
-                closeCamera();
-                openCamera(mTextureView.getWidth(), mTextureView.getHeight());
+                isOption=true;
+                switchCameraWithMaskAnimation();
             }
         });
 
@@ -566,8 +570,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                Title.setVisibility(View.VISIBLE);
                isRecord4=true;
                isRecord5=false;
-               closeCamera();
-               openCamera(mTextureView.getWidth(), mTextureView.getHeight());
+               isOption=true;
+               switchCameraWithMaskAnimation();
            }
         });
 
@@ -584,8 +588,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 Title.setVisibility(View.VISIBLE);
                 isRecord5=true;
                 isRecord4=false;
-                closeCamera();
-                openCamera(mTextureView.getWidth(), mTextureView.getHeight());
+                isOption=true;
+                switchCameraWithMaskAnimation();
             }
         });
 
@@ -859,6 +863,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         handler.post(runnable);
     }
 
+    @SuppressLint("CutPasteId")
     private void switchCameraWithMaskAnimation() {
         if (mCameraDevice != null) {
             // 创建一个蒙版视图
@@ -866,25 +871,19 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             maskView.setBackgroundColor(Color.BLACK); // 设置背景色为黑色
             maskView.setAlpha(0f); // 初始透明度为0
 
-            int width = mTextureView.getWidth();
-            int height = mTextureView.getHeight();
+              int  width = findViewById(R.id.container).getWidth();
+              int  height = findViewById(R.id.container).getHeight();
+
+
+
+            Log.d("switchCameraWithMaskAnimation", "width:" + width + " height:" + height);
 
             // 获取 mTextureView 的父布局
             ViewGroup parent = (ViewGroup) mTextureView.getParent();
 
             // 设置蒙版视图的布局参数
             FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(width, height);
-            if(switch_frame.getText().toString().equals("4:3")&&isCaptureing) {
-                params.topMargin = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 100, getResources().getDisplayMetrics());
-            }
-            else if(switch_frame.getText().toString().equals("1:1")&&isCaptureing)
-            {
-                params.topMargin = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 160, getResources().getDisplayMetrics());
-            }
-            else if(!isCaptureing)
-            {
-                params.topMargin = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 100, getResources().getDisplayMetrics());
-            }
+
             maskView.setLayoutParams(params);
 
             // 将蒙版视图添加到 mTextureView 的父布局中
@@ -906,10 +905,60 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             animator.addListener(new AnimatorListenerAdapter() {
                 @Override
                 public void onAnimationEnd(Animator animation) {
-                    SwichCamera(maskView);
+                    if(isSwichCamera) {
+                        SwichCamera(maskView);
+                    }
+                    if(isOption)
+                    {
+                        SwitchFrame(maskView);
+                    }
+                    if(isLayoutSwich)
+                    {
+                        Swichlayout(maskView);
+                    }
                 }
             });
         }
+    }
+
+    private void Swichlayout(final View maskView) {
+        closeCamera();
+        openCamera(mTextureView.getWidth(), mTextureView.getHeight());
+        isLayoutSwich=false;
+        // 开启一个新的线程实现移除蒙版，并且延迟600毫秒，等待摄像头切换成功
+        // 创建 Handler
+        Handler handler = new Handler();
+        // 创建 Runnable
+        Runnable removeMaskRunnable = new Runnable() {
+            @Override
+            public void run() {
+                ViewGroup parent = (ViewGroup) mTextureView.getParent();
+                parent.removeView(maskView); // 移除蒙版视图
+            }
+        };
+
+        // 执行延迟任务
+        handler.postDelayed(removeMaskRunnable, 950); // 延迟 870 毫秒
+    }
+
+    private void SwitchFrame(final View maskView) {
+        closeCamera();
+        openCamera(mTextureView.getWidth(), mTextureView.getHeight());
+        isOption=false;
+        // 开启一个新的线程实现移除蒙版，并且延迟600毫秒，等待摄像头切换成功
+        // 创建 Handler
+        Handler handler = new Handler();
+        // 创建 Runnable
+        Runnable removeMaskRunnable = new Runnable() {
+            @Override
+            public void run() {
+                ViewGroup parent = (ViewGroup) mTextureView.getParent();
+                parent.removeView(maskView); // 移除蒙版视图
+            }
+        };
+
+        // 执行延迟任务
+        handler.postDelayed(removeMaskRunnable, 990); // 延迟 870 毫秒
     }
 
     private void SwichCamera(final View maskView) {
@@ -925,6 +974,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         } else {
             falsh_switch.setVisibility(View.VISIBLE);
         }
+        isSwichCamera=false;
 
         // 开启一个新的线程实现移除蒙版，并且延迟600毫秒，等待摄像头切换成功
         // 创建 Handler
@@ -1125,8 +1175,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             isLayout=true;
             isRecord5=true;
             isCaptureing=false;
-            closeCamera();
-            openCamera(mTextureView.getWidth(), mTextureView.getHeight());
+            isLayoutSwich=true;
+            switchCameraWithMaskAnimation();
         } else {
             capture.setVisibility(View.VISIBLE);
             Title.setVisibility(View.VISIBLE);
@@ -1136,8 +1186,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             isRecord4=false;
             isRecord5=false;
             isCaptureing=true;
-            closeCamera();
-            openCamera(mTextureView.getWidth(), mTextureView.getHeight());
+            isLayoutSwich=true;
+            switchCameraWithMaskAnimation();
 
         }
 
