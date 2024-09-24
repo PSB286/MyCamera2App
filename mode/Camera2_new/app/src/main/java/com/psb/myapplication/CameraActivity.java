@@ -101,7 +101,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     private GestureDetector mGestureDetector = null;
     private DisplayMetrics mDisplayMetrics = null;
     //按键定义
-    private ImageView record, switch_camera, capture, mPictureIv, falsh_switch;
+    private ImageView record, switch_camera, capture, mPictureIv, falsh_switch,Load;
     private TextView switch_frame, void_quality, timerText, option1, option2, option3, option4,option5;
     private FocusSunView focusSunView;
     private LinearLayout Choose,Choose2;
@@ -134,7 +134,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     private CameraCaptureSession.CaptureCallback mPreCaptureCallback;
     private PopupWindow popupWindow;
     public MediaActionSound mMediaActionSound;
-    public Animation btnAnimation;
+    public Animation btnAnimation,LoadAnimation;
     Size largest=new Size(4,3);
     boolean isCapture =  false;
     boolean isCaptureing=true;
@@ -146,6 +146,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     boolean isOption=false;
     boolean isLayoutSwich=false;
     boolean isRecordingflg=false;
+    boolean isStopRecord=false;
+    boolean isCaptureingflg =false;
     CameraCaptureSession.StateCallback PreCaptureCallback;
 
 
@@ -219,8 +221,23 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                             // 设置焦点位置
                             float halfWidth = focusSunView.getWidth() / 2f;
                             float halfHeight = focusSunView.getHeight() / 4f;
-                            focusSunView.setTranslationX(event.getX() - halfWidth);
-                            focusSunView.setTranslationY(event.getY() + halfHeight);
+                            if(switch_frame.getText().toString().equals("4:3")&&isCaptureing) {
+                                focusSunView.setTranslationX(event.getX() - halfWidth);
+                                focusSunView.setTranslationY(event.getY() + halfHeight);
+                            }
+                            if(switch_frame.getText().toString().equals("1:1")&&isCaptureing) {
+                                focusSunView.setTranslationX(event.getX() - halfWidth);
+                                focusSunView.setTranslationY(event.getY() + 3*halfHeight);
+                            }
+                            if(switch_frame.getText().toString().equals("FULL")&&isCaptureing) {
+                                focusSunView.setTranslationX(event.getX() - halfWidth);
+                                focusSunView.setTranslationY(event.getY() - 3*halfHeight);
+                            }
+                            if(!isCaptureing)
+                            {
+                                focusSunView.setTranslationX(event.getX() - halfWidth);
+                                focusSunView.setTranslationY(event.getY() + halfHeight);
+                            }
                             // 开始倒计时
                             focusSunView.startCountdown(false);
                         }
@@ -287,6 +304,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 //录像结束声音
                 mMediaActionSound.play(MediaActionSound.STOP_VIDEO_RECORDING);
                 mPictureIv.setImageBitmap(getLatestThumbBitmap(this));
+                record.setScaleX(1f);
+                record.setScaleY(1f);
             } catch (CameraAccessException e) {
                 throw new RuntimeException(e);
             }
@@ -369,6 +388,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         switch_frame = findViewById(R.id.frame_switch);
         void_quality = findViewById(R.id.void_quality);
         falsh_switch = findViewById(R.id.falsh_switch);
+        Load=findViewById(R.id.Load);
 
 
         // 获取屏幕宽高
@@ -413,9 +433,9 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         mMediaActionSound = new MediaActionSound();
         //按钮动画
         btnAnimation = AnimationUtils.loadAnimation(this, R.anim.btn_anim);
+        LoadAnimation=AnimationUtils.loadAnimation(this, R.anim.dialog_loading);
         recordTouchListener();
         captureTouchListener();
-
     }
 
     public static CameraActivity getInstance() {
@@ -463,7 +483,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 } else {
                     try {
                       //  Toast.makeText(CameraActivity.this, "停止录像按钮", Toast.LENGTH_SHORT).show();
-
+                        isStopRecord=true;
+                        //switchCameraWithMaskAnimation();
                         stopRecordingVideo();
                         //录像结束声音
                         mMediaActionSound.play(MediaActionSound.STOP_VIDEO_RECORDING);
@@ -490,6 +511,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         capture.setOnClickListener(v -> {
             if (v.getId() == R.id.capture) {
               //  Toast.makeText(CameraActivity.this, "点击了拍照按钮", Toast.LENGTH_SHORT).show();
+                isCaptureingflg =true;
+                switchCameraWithMaskAnimation();
                 takePicture();
                 setLatestThumbBitmapAsync(mPictureIv, this);
                 mMediaActionSound.play(MediaActionSound.SHUTTER_CLICK); // 播放拍照声音
@@ -808,7 +831,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         mPictureIv.setVisibility(View.VISIBLE);
         void_quality.setVisibility(View.VISIBLE);
         mCustomViewL.setVisibility(View.VISIBLE);
-
+        isStopRecord=true;
+        //switchCameraWithMaskAnimation();
         // 停止计时器
         handler.removeCallbacks(runnable);
         //将时间清空
@@ -898,12 +922,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             View maskView = new View(this);
             maskView.setBackgroundColor(Color.BLACK); // 设置背景色为黑色
             maskView.setAlpha(0f); // 初始透明度为0
-
               int  width = findViewById(R.id.container).getWidth();
               int  height = findViewById(R.id.container).getHeight();
-
-
-
             Log.d("switchCameraWithMaskAnimation", "width:" + width + " height:" + height);
 
             // 获取 mTextureView 的父布局
@@ -944,13 +964,58 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                     {
                         Swichlayout(maskView);
                     }
+                    if(isStopRecord)
+                    {
+                        RecordLoading(maskView);
+                    }
+                    if(isCaptureingflg)
+                    {
+                        CaptureLoading(maskView);
+                    }
                 }
             });
         }
     }
 
+    private void CaptureLoading(View maskView) {
+        isCaptureingflg=false;
+        // 开启一个新的线程实现移除蒙版，并且延迟600毫秒，等待摄像头切换成功
+        // 创建 Handler
+        Handler handler = new Handler();
+        // 创建 Runnable
+        Runnable removeMaskRunnable = new Runnable() {
+            @Override
+            public void run() {
+                ViewGroup parent = (ViewGroup) mTextureView.getParent();
+                parent.removeView(maskView); // 移除蒙版视图
+                Load.setVisibility(View.GONE);
+            }
+        };
+
+        // 执行延迟任务
+        handler.postDelayed(removeMaskRunnable, 1); // 延迟 870 毫秒
+    }
+
+    private void RecordLoading(View maskView)  {
+        isLayoutSwich=false;
+        // 开启一个新的线程实现移除蒙版，并且延迟600毫秒，等待摄像头切换成功
+        // 创建 Handler
+        Handler handler = new Handler();
+        // 创建 Runnable
+        Runnable removeMaskRunnable = new Runnable() {
+            @Override
+            public void run() {
+                ViewGroup parent = (ViewGroup) mTextureView.getParent();
+                parent.removeView(maskView); // 移除蒙版视图
+                Load.setVisibility(View.GONE);
+            }
+        };
+
+        // 执行延迟任务
+        handler.postDelayed(removeMaskRunnable, 600); // 延迟 870 毫秒
+    }
+
     private void Swichlayout(final View maskView) {
-        closeCamera();
         openCamera(mTextureView.getWidth(), mTextureView.getHeight());
         isLayoutSwich=false;
         // 开启一个新的线程实现移除蒙版，并且延迟600毫秒，等待摄像头切换成功
@@ -966,11 +1031,10 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         };
 
         // 执行延迟任务
-        handler.postDelayed(removeMaskRunnable, 950); // 延迟 870 毫秒
+        handler.postDelayed(removeMaskRunnable, 600); // 延迟 870 毫秒
     }
 
     private void SwitchFrame(final View maskView) {
-        closeCamera();
         openCamera(mTextureView.getWidth(), mTextureView.getHeight());
         isOption=false;
         // 开启一个新的线程实现移除蒙版，并且延迟600毫秒，等待摄像头切换成功
@@ -986,7 +1050,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         };
 
         // 执行延迟任务
-        handler.postDelayed(removeMaskRunnable, 990); // 延迟 870 毫秒
+        handler.postDelayed(removeMaskRunnable, 600); // 延迟 870 毫秒
     }
 
     private void SwichCamera(final View maskView) {
