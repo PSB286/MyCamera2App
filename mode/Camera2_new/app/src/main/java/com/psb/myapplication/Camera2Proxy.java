@@ -65,10 +65,10 @@ public class Camera2Proxy {
     private int mDeviceOrientation = 0; // 设备方向，由相机传感器获取
 
     /* 缩放相关 */
-    private final int MAX_ZOOM = 68; // 放大的最大值，用于计算每次放大/缩小操作改变的大小
+    private final int MAX_ZOOM = 67; // 放大的最大值，用于计算每次放大/缩小操作改变的大小
     private int mZoom = 0; // 0~mMaxZoom之间变化
-    private float mStepWidth=30; // 每次改变的宽度大小
-    private float mStepHeight=30; // 每次改变的高度大小
+    private float mStepWidth=25; // 每次改变的宽度大小
+    private float mStepHeight=25; // 每次改变的高度大小
     private CameraCaptureSession.CaptureCallback mAfCaptureCallback;
 
     /**
@@ -183,6 +183,7 @@ public class Camera2Proxy {
 
     // 计算最大放大倍数
     private void initZoomParameter() {
+        // crop_rect 表示裁剪区域
         Rect rect = mCameraCharacteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE);
         Log.d(TAG, "sensor_info_active_array_size: " + rect);
         // max_digital_zoom 表示 active_rect 除以 crop_rect 的最大值
