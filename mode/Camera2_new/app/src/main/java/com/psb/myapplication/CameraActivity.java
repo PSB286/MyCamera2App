@@ -149,6 +149,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     CameraCaptureSession.StateCallback PreCaptureCallback;
 
 
+
+
     @SuppressLint("MissingInflatedId")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -185,9 +187,9 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                         if (isZooming) {
                             float newDistance = getFingerSpacing(event);
                             if (newDistance > mOldDistance) {
-                                mCameraProxy.handleZoom(true, mCameraDevice, characteristics, previewRequestBuilder);
+                                mCameraProxy.handleZoom(true, mCameraDevice, characteristics, previewRequestBuilder,captureSession);
                             } else if (newDistance < mOldDistance) {
-                                mCameraProxy.handleZoom(false, mCameraDevice, characteristics, previewRequestBuilder);
+                                mCameraProxy.handleZoom(false, mCameraDevice, characteristics, previewRequestBuilder,captureSession);
                             }
                             mOldDistance = newDistance;
                           //  Toast.makeText(getApplicationContext(), "双指移动", Toast.LENGTH_SHORT).show();
@@ -1073,6 +1075,12 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             captureBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_AUTO);
             // 自动曝光
             captureBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
+           if(mCameraProxy.mPreviewRequestBuilder!=null) {
+               Rect zoomRect = mCameraProxy.mPreviewRequestBuilder.get(CaptureRequest.SCALER_CROP_REGION);
+               if (zoomRect != null) {
+                   captureBuilder.set(CaptureRequest.SCALER_CROP_REGION, zoomRect);
+               }
+           }
             // 获取设备方向
             int rotation = getWindowManager().getDefaultDisplay().getRotation();
             //int rotation=getRotationDegrees();

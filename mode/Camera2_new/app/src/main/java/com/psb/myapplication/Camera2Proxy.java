@@ -46,13 +46,12 @@ public class Camera2Proxy {
     private static final String TAG = "Camera2Proxy";
     private final CameraActivity myapp=CameraActivity.getInstance();
     private final Activity mActivity;
-
     private int mCameraId = CameraCharacteristics.LENS_FACING_FRONT; // 要打开的摄像头ID
     private CameraCharacteristics mCameraCharacteristics; // 相机属性
     private CameraManager mCameraManager; // 相机管理者
     private CameraDevice mCameraDevice; // 相机对象
     private CameraCaptureSession mCaptureSession;
-    private CaptureRequest.Builder mPreviewRequestBuilder; // 相机预览请求的构造器
+    CaptureRequest.Builder mPreviewRequestBuilder; // 相机预览请求的构造器
     private CaptureRequest mPreviewRequest;
     private Handler mBackgroundHandler;
     private HandlerThread mBackgroundThread;
@@ -66,7 +65,7 @@ public class Camera2Proxy {
     private int mDeviceOrientation = 0; // 设备方向，由相机传感器获取
 
     /* 缩放相关 */
-    private final int MAX_ZOOM = 200; // 放大的最大值，用于计算每次放大/缩小操作改变的大小
+    private final int MAX_ZOOM = 68; // 放大的最大值，用于计算每次放大/缩小操作改变的大小
     private int mZoom = 0; // 0~mMaxZoom之间变化
     private float mStepWidth=30; // 每次改变的宽度大小
     private float mStepHeight=30; // 每次改变的高度大小
@@ -392,12 +391,16 @@ public class Camera2Proxy {
         openCamera();
     }
     // 处理缩放
-    public void handleZoom(boolean isZoomIn,CameraDevice mCameraDevice,CameraCharacteristics mCameraCharacteristics,CaptureRequest.Builder mPreviewRequestBuilder) {
-        if (mCameraDevice == null || mCameraCharacteristics == null || mPreviewRequestBuilder == null) {
+    public void handleZoom(boolean isZoomIn,CameraDevice CameraDevice,CameraCharacteristics CameraCharacteristics,CaptureRequest.Builder PreviewRequestBuilder,CameraCaptureSession captureSession) {
+        if (CameraDevice == null || CameraCharacteristics == null || mPreviewRequestBuilder == null) {
             return;
         }
+        mCaptureSession=captureSession;
+        mCameraDevice=CameraDevice;
+        mCameraCharacteristics=CameraCharacteristics;
+        mPreviewRequestBuilder=PreviewRequestBuilder;
 
-       // Toast.makeText(mActivity, "进入缩放", Toast.LENGTH_SHORT).show();
+        // Toast.makeText(mActivity, "进入缩放", Toast.LENGTH_SHORT).show();
         Log.d("handleZoom", "handleZoom: " + isZoomIn);
         if (isZoomIn && (mZoom < MAX_ZOOM)) { // 放大
             //Toast.makeText(mActivity, "放大", Toast.LENGTH_SHORT).show();
