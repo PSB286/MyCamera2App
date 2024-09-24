@@ -121,11 +121,67 @@ public class ImageUtils {
         // 查询视频
         Cursor videoCursor = sContext.getContentResolver().query(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, new String[]{MediaStore.Video.Media._ID, MediaStore.Video.Media.DATA,MediaStore.Video.Media.DATE_MODIFIED}, null, null, MediaStore.Files.FileColumns.DATE_MODIFIED + " DESC"
         );
+        Log.d("getLatestThumbBitmap", "getLatestThumbBitmap: " + cursor.getCount() + ", " + videoCursor.getCount());
+        if(cursor.getCount()==0&&videoCursor.getCount()==0)
+        {
+            return bitmap;
+        }
+        else if(cursor.getCount()==0&&videoCursor.getCount()!=0)
+        {
+            boolean firstvideo = videoCursor.moveToFirst();
+            //videolatestTime = videoCursor.getLong(videoCursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_MODIFIED));
+            if(firstvideo) {
+                Log.d("--Bitmap--", "getLatestThumbBitmap: 存在" + firstvideo);
+                imageUri = Uri.withAppendedPath(
+                        MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                        videoCursor.getString(videoCursor.getColumnIndexOrThrow(MediaStore.Video.Media._ID))
+                );
+
+                long videoId = videoCursor.getLong(videoCursor.getColumnIndexOrThrow(MediaStore.Video.Media._ID));
+                // 获取视频的缩略图
+                bitmap = MediaStore.Video.Thumbnails.getThumbnail(
+                        sContext.getContentResolver(),
+                        videoId,
+                        MediaStore.Video.Thumbnails.MICRO_KIND,
+                        null
+                );
+                Log.d("--Bitmap--", "获取视频缩略图:"+bitmap);
+            }
+            videoCursor.close();
+            return bitmap;
+        }
+        else if(cursor.getCount()!=0&&videoCursor.getCount()==0)
+        {
+            boolean first = cursor.moveToFirst();
+            if (first) {
+                imageUri = Uri.withAppendedPath(
+                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                        cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID))
+                );
+                if (first) {
+                    // 获取图片id
+                    long id = cursor.getLong(0);
+                    // 获取缩略图
+                    bitmap = MediaStore.Images.Thumbnails.getThumbnail(sContext.getContentResolver(), id, MediaStore.Images
+                            .Thumbnails.MICRO_KIND, null);
+                    // 打印图片宽高
+                    Log.d("Bitmap", "bitmap width: " + bitmap.getWidth());
+                    Log.d("Bitmap", "bitmap height: " + bitmap.getHeight());
+                }
+            }
+            Log.d("Bitmap", "getLatestThumbBitmap: " + first);
+            cursor.close();
+            return bitmap;
+        }
         assert videoCursor != null;
         boolean firstvideo = videoCursor.moveToFirst();
         boolean first = cursor.moveToFirst();
+        Log.d("--Bitmap--", "getLatestThumbBitmap: " + firstvideo + ", " + first);
+
+
         
         videolatestTime = videoCursor.getLong(videoCursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_MODIFIED));
+
         imagelatestTime= cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_MODIFIED));
 
         if(videolatestTime>imagelatestTime)
@@ -172,5 +228,4 @@ public class ImageUtils {
         }
         return bitmap;
     }
-
 }

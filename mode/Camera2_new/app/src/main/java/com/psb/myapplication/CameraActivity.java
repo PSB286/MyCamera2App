@@ -142,10 +142,10 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     boolean isRecord5 = false;
     boolean isLayout = false;
     boolean isClickFocus = false;
-    boolean initPreview=true;
     boolean isSwichCamera=false;
     boolean isOption=false;
     boolean isLayoutSwich=false;
+    boolean isRecordingflg=false;
     CameraCaptureSession.StateCallback PreCaptureCallback;
 
 
@@ -280,8 +280,21 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     @Override
     public void onPause() {
         // Toast.makeText(MainActivity.this, "onPause", Toast.LENGTH_SHORT);
-        // 关闭camera，关闭后台线程
-        closeCamera();
+        if (isRecordingflg)
+        {
+            try {
+                stopRecordingVideo();
+                //录像结束声音
+                mMediaActionSound.play(MediaActionSound.STOP_VIDEO_RECORDING);
+                mPictureIv.setImageBitmap(getLatestThumbBitmap(this));
+            } catch (CameraAccessException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        else {
+            // 关闭camera，关闭后台线程
+            closeCamera();
+        }
         //stopBackgroundThread();
         super.onPause();
     }
@@ -372,7 +385,14 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         // 显示最近
         mPictureIv = findViewById(R.id.picture_iv);
 //       // 显示最近一次拍照的图片
-        mPictureIv.setImageBitmap(getLatestThumbBitmap(this));
+        Bitmap bitmap=getLatestThumbBitmap(this);
+        if(bitmap==null)
+        {
+           mPictureIv.setImageResource(R.drawable.empty);
+        }
+        else {
+            mPictureIv.setImageBitmap(bitmap);
+        }
         // 初始化焦点光圈
         focusSunView = findViewById(R.id.focus_sun_view);
         Previous_recorderPath = null;
@@ -435,13 +455,15 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             if (v.getId() == R.id.recordvideo) {
                 if (!isRecording) {
                    // Toast.makeText(CameraActivity.this, "点击了录像按钮", Toast.LENGTH_SHORT).show();
+                    isRecordingflg=true;
+                    record.setEnabled(false);
                     startRecordingVideo();
-
                     //播放录像声音
                     mMediaActionSound.play(MediaActionSound.START_VIDEO_RECORDING);
                 } else {
                     try {
                       //  Toast.makeText(CameraActivity.this, "停止录像按钮", Toast.LENGTH_SHORT).show();
+
                         stopRecordingVideo();
                         //录像结束声音
                         mMediaActionSound.play(MediaActionSound.STOP_VIDEO_RECORDING);
@@ -606,7 +628,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 // 按下
                 if (event.getAction() == MotionEvent.ACTION_DOWN) {
                     if (!isRecording) {
-                        capture.startAnimation(btnAnimation); //拍照按钮动画
+                        record.startAnimation(btnAnimation); //拍照按钮动画
                         record.setScaleX(0.8f);
                         record.setScaleY(0.8f);
                     }
@@ -777,6 +799,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             captureSession = null;
         }
         isRecording = false;
+        isRecordingflg=false;
         // 清空 surfaces 集合
         surfaces.clear();
 
@@ -855,6 +878,10 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             @Override
             public void run() {
                 seconds++;
+                if(seconds >1)
+                {
+                    record.setEnabled(true);
+                }
                 @SuppressLint("DefaultLocale") String timeString = String.format("%02d:%02d", seconds / 60, seconds % 60);
                 timerText.setText(timeString);
                 handler.postDelayed(this, 1000);
