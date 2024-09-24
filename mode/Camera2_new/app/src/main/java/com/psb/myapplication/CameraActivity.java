@@ -783,7 +783,6 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         timerText.setVisibility(View.GONE);
         switch_camera.setVisibility(View.VISIBLE);
         mPictureIv.setVisibility(View.VISIBLE);
-        falsh_switch.setVisibility(View.VISIBLE);
         void_quality.setVisibility(View.VISIBLE);
         mCustomViewL.setVisibility(View.VISIBLE);
 
