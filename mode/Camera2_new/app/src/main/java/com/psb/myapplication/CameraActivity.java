@@ -148,6 +148,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     boolean isRecordingflg=false;
     boolean isStopRecord=false;
     boolean isCaptureingflg =false;
+    boolean isClickBitmap = false;
     CameraCaptureSession.StateCallback PreCaptureCallback;
 
 
@@ -286,6 +287,18 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         // 启动后台线程，用于执行回调中的代码
         // startBackgroundThread();
         // 如果Activity是从stop/pause回来，TextureView是OK的，只需要重新开启camera就行
+        if(isClickBitmap)
+        {
+            Bitmap bitmap=getLatestThumbBitmap(this);
+            if(bitmap==null)
+            {
+                mPictureIv.setImageResource(R.drawable.empty);
+            }
+            else {
+                mPictureIv.setImageBitmap(bitmap);
+            }
+            isClickBitmap = false;
+        }
         if (mTextureView.isAvailable()) {
             openCamera(mTextureView.getWidth(), mTextureView.getHeight());
         } else {
@@ -538,6 +551,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         // 图片按钮
         mPictureIv.setOnClickListener(v -> {
             if (v.getId() == R.id.picture_iv) {
+                isClickBitmap=true;
                 // 创建意图并启动
                 Intent intent = new Intent(Intent.ACTION_VIEW);
                 intent.setDataAndType(ImageUtils.imageUri, "image/*");
