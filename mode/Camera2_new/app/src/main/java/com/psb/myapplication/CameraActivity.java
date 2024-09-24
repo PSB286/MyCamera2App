@@ -1099,8 +1099,6 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             captureBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
             // 自动对焦
             captureBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_AUTO);
-            // 自动曝光
-            captureBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
            if(mCameraProxy.mPreviewRequestBuilder!=null) {
                Rect zoomRect = mCameraProxy.mPreviewRequestBuilder.get(CaptureRequest.SCALER_CROP_REGION);
                if (zoomRect != null) {
@@ -1568,7 +1566,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             previewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
             // 设置自动白平衡
             previewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
-            // 闪光灯
+            // 设置闪光灯
             previewRequestBuilder.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_OFF);
             if (!isClickFocus) {
                 // 自动对焦
