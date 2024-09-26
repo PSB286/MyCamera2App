@@ -116,6 +116,7 @@ public class Camera2Proxy {
             // 获取支持的预览输出尺寸
             StreamConfigurationMap map = mCameraCharacteristics.get(CameraCharacteristics
                     .SCALER_STREAM_CONFIGURATION_MAP);
+
             // 拍照大小，选择能支持的一个最大的图片大小
             Size largest = Collections.max(Arrays.asList(map.getOutputSizes(ImageFormat.JPEG)), new CompareSizesByArea());
             Log.d(TAG, "picture size: " + largest.getWidth() + "*" + largest.getHeight());
@@ -329,16 +330,17 @@ public class Camera2Proxy {
 
     // 选择合适的预览尺寸
     Size chooseOptimalSize(Size[] sizes, int viewWidth, int viewHeight, Size pictureSize) {
+
         // 1. 先找到与预览view的宽高比最接近的尺寸
-        int totalRotation = getRotation();
+        int totalRotation = getRotation();// 获取屏幕旋转角度
         // 2. 遍历所有尺寸，找到最接近的尺寸
-        boolean swapRotation = totalRotation == 90 || totalRotation == 270;
+        boolean swapRotation = totalRotation == 90 || totalRotation == 270;// 是否需要交换宽高
         // 3. 遍历所有尺寸，找到最接近的尺寸
-        int width = swapRotation ? viewHeight : viewWidth;
+        int width = swapRotation ? viewHeight : viewWidth;// 宽
         // 4. 遍历所有尺寸，找到最接近的尺寸
-        int height = swapRotation ? viewWidth : viewHeight;
+        int height = swapRotation ? viewWidth : viewHeight;// 高
         // 5. 遍历所有尺寸，找到最接近的尺寸
-        return getSuitableSize(sizes, width, height, pictureSize);
+        return getSuitableSize(sizes, width, height, pictureSize);// 返回最接近的尺寸
     }
 
     // 获取旋转角度

@@ -262,9 +262,9 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         initScreen();//初始化布局
+        initRequestPermissions(); // 申请摄像头权限
         initVariable();//初始化变量
         initCustomViewL(); // 初始化自定义View
-        initRequestPermissions(); // 申请摄像头权限
         initClickListener(); // 初始化点击监听器
         initTouchListener();//初始化触摸监听器
     }
@@ -902,6 +902,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 previewRequestBuilder.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_OFF);
 
                 try {
+                    // 更新预览请求
                     captureSession.setRepeatingRequest(
                             previewRequestBuilder.build(),
                             mPreCaptureCallback, null);
@@ -1426,6 +1427,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             isRecord5=true;
             isCaptureing=false;
             isLayoutSwich=true;
+            mFlashMode = 2;
+            SwichFlash();
             switchCameraWithMaskAnimation();
             mCameraProxy.mZoom=0;
         } else {
@@ -1439,6 +1442,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             isCaptureing=true;
             isLayoutSwich=true;
             mCameraProxy.mZoom=0;
+            mFlashMode = 2;
+            SwichFlash();
             switchCameraWithMaskAnimation();
 
         }
@@ -1511,15 +1516,18 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             characteristics = manager.getCameraCharacteristics(cameraId);
             // 获取摄像头支持的配置属性
             StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+            Log.d("--initAutoFitTextureView--", "map:" +map);
+            Toast.makeText(this, "map:" +map, Toast.LENGTH_SHORT).show();
             // 获取摄像头支持的最大尺寸
             assert map != null;
-            // 获取所有支持的尺寸的最大尺寸
-            //Size largest = Collections.max(Arrays.asList(map.getOutputSizes(ImageFormat.JPEG)), new CompareSizesByArea());
+            // 获取支持的尺寸的最大尺寸
+            Size largestmax = Collections.max(Arrays.asList(map.getOutputSizes(ImageFormat.JPEG)), new CompareSizesByArea());
 
             width = largest.getWidth();
             height = largest.getHeight();
             Log.d("--initAutoFitTextureView--", "width:" + width+" height:"+height);
             previewSize = chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class), width, height, largest);
+            mImageReader = ImageReader.newInstance(largestmax.getWidth(), largestmax.getHeight(), ImageFormat.JPEG, 2);
             Log.d("--initAutoFitTextureView--", "previewSize:" + previewSize.getWidth()+" height:"+previewSize.getHeight());
             // 根据选中的预览尺寸来调整预览组件（TextureView的）的长宽比
             //previewSize=new Size(1600, 720);
@@ -1775,7 +1783,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         surfaces.add(previewSurface);
 
         // 创建ImageReader对象(拍照)
-        mImageReader = ImageReader.newInstance(previewSize.getWidth(), previewSize.getHeight(), ImageFormat.JPEG, 1);
+        //mImageReader = ImageReader.newInstance(previewSize.getWidth(), previewSize.getHeight(), ImageFormat.JPEG, 1);
         mImageReader.setOnImageAvailableListener(mImageReaderListener, null);
         surfaces.add(mImageReader.getSurface());
 
