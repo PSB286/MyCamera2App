@@ -7,6 +7,7 @@ import static java.lang.Thread.sleep;
 import android.Manifest;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
+import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -21,6 +22,10 @@ import android.graphics.Matrix;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraCharacteristics;
@@ -59,6 +64,7 @@ import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.view.animation.AccelerateDecelerateInterpolator;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.FrameLayout;
@@ -150,6 +156,102 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     boolean isCaptureingflg =false;
     boolean isClickBitmap = false;
     CameraCaptureSession.StateCallback PreCaptureCallback;
+    // 初始化 SensorManager 和传感器监听器
+    private SensorManager sensorManager;
+    private SensorEventListener sensorEventListener = new SensorEventListener() {
+                @Override
+                public void onSensorChanged(SensorEvent event) {
+                    if (event.sensor.getType() == Sensor.TYPE_ORIENTATION) {
+                        float azimuth = event.values[0];  // 方位角
+                        float pitch = event.values[1];    // 倾斜角
+                        float roll = event.values[2];     // 滚动角
+
+                        // 执行其他逻辑
+                        handleOrientationChange(azimuth, pitch, roll);
+                    }
+                }
+
+                @Override
+                public void onAccuracyChanged(Sensor sensor, int accuracy) {
+                    // 准确度变化时的处理
+                }
+            };
+    // 处理方向变化的逻辑
+
+    private void handleOrientationChange(float azimuth, float pitch, float roll) {
+        // 根据方向变化执行其他逻辑
+        Log.d("--Orientation--", "Azimuth: " + azimuth + ", Pitch: " + pitch + ", Roll: " + roll);
+        // 判断是否需要旋转图片
+        //if (Math.abs(pitch) >= 25 || Math.abs(roll) >= 25) {
+            if(roll<=5&&pitch<=0)
+            {
+                mPictureIv.setRotation(0);
+                switch_camera.setRotation(0);
+                switch_frame.setRotation(0);
+                void_quality.setRotation(0);
+                option1.setRotation(0);
+                option2.setRotation(0);
+                option3.setRotation(0);
+                option4.setRotation(0);
+                option5.setRotation(0);
+                falsh_switch.setRotation(0);
+                mCustomViewL.textViews.get(0).setRotation(0);
+                mCustomViewL.textViews.get(1).setRotation(0);
+            }
+            if(pitch<=5&&roll>=20)
+            {
+                mPictureIv.setRotation(90);
+                switch_camera.setRotation(90);
+                switch_frame.setRotation(90);
+                void_quality.setRotation(90);
+                option1.setRotation(90);
+                option2.setRotation(90);
+                option3.setRotation(90);
+                option4.setRotation(90);
+                option5.setRotation(90);
+                falsh_switch.setRotation(90);
+                mCustomViewL.textViews.get(0).setRotation(90);
+                mCustomViewL.textViews.get(1).setRotation(90);
+            }
+            if(pitch<=50&&roll<=-30)
+            {
+                mPictureIv.setRotation(-90);
+                switch_camera.setRotation(-90);
+                switch_frame.setRotation(-90);
+                void_quality.setRotation(-90);
+                option1.setRotation(-90);
+                option2.setRotation(-90);
+                option3.setRotation(-90);
+                option4.setRotation(-90);
+                option5.setRotation(-90);
+                falsh_switch.setRotation(90);
+                mCustomViewL.textViews.get(0).setRotation(-90);
+                mCustomViewL.textViews.get(1).setRotation(-90);
+            }
+            if(roll>=-76&&roll<=76&&pitch>0)
+            {
+                mPictureIv.setRotation(180);
+                switch_camera.setRotation(180);
+                switch_frame.setRotation(180);
+                void_quality.setRotation(180);
+                option1.setRotation(180);
+                option2.setRotation(180);
+                option3.setRotation(180);
+                option4.setRotation(180);
+                option5.setRotation(180);
+                falsh_switch.setRotation(180);
+                mCustomViewL.textViews.get(0).setRotation(180);
+                mCustomViewL.textViews.get(1).setRotation(180);
+
+            }
+            // 创建一个旋转动画
+            ObjectAnimator rotationAnimator = ObjectAnimator.ofFloat(mPictureIv, "rotation", 90);
+            rotationAnimator.setDuration(10); // 设置动画持续时间，单位为毫秒
+            rotationAnimator.setInterpolator(new AccelerateDecelerateInterpolator());
+            // 启动动画
+  //          rotationAnimator.start();
+
+    }
 
 
 
@@ -287,6 +389,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         // 启动后台线程，用于执行回调中的代码
         // startBackgroundThread();
         // 如果Activity是从stop/pause回来，TextureView是OK的，只需要重新开启camera就行
+
+        sensorManager.registerListener(sensorEventListener, sensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION), SensorManager.SENSOR_DELAY_NORMAL);
         if(isClickBitmap)
         {
             Bitmap bitmap=getLatestThumbBitmap(this);
@@ -329,6 +433,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         }
         //stopBackgroundThread();
         super.onPause();
+        sensorManager.unregisterListener(sensorEventListener);
     }
 
     @Override
@@ -449,7 +554,14 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         LoadAnimation=AnimationUtils.loadAnimation(this, R.anim.dialog_loading);
         recordTouchListener();
         captureTouchListener();
+        // 初始化 SensorManager
+        // 注册传感器监听器
+        sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+        sensorManager.registerListener(sensorEventListener, sensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION), SensorManager.SENSOR_DELAY_NORMAL);
+
     }
+
+
 
     public static CameraActivity getInstance() {
         return myapp;
@@ -536,6 +648,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         switch_frame.setOnClickListener(v -> {
             if (v.getId() == R.id.frame_switch) {
                 //Toast.makeText(CameraActivity.this, "点击了切换帧按钮", Toast.LENGTH_SHORT).show();
+                mCameraProxy.mZoom=0;
                 SwichFrame();
             }
         });
@@ -1287,6 +1400,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             isCaptureing=false;
             isLayoutSwich=true;
             switchCameraWithMaskAnimation();
+            mCameraProxy.mZoom=0;
         } else {
             capture.setVisibility(View.VISIBLE);
             Title.setVisibility(View.VISIBLE);
@@ -1297,6 +1411,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             isRecord5=false;
             isCaptureing=true;
             isLayoutSwich=true;
+            mCameraProxy.mZoom=0;
             switchCameraWithMaskAnimation();
 
         }
@@ -1470,6 +1585,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
         // 获取手机的旋转方向
         int rotation = getWindowManager().getDefaultDisplay().getRotation();
+
         // 获取屏幕的长和宽
         Matrix matrix = new Matrix();
         // 获取屏幕的长和宽
@@ -1482,12 +1598,18 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
         // 处理手机横屏的情况
         if (Surface.ROTATION_90 == rotation || Surface.ROTATION_270 == rotation) {
+
+            // 调整摄像头长宽和屏幕长宽的相对位置
             bufferRect.offset(centerX - bufferRect.centerX(), centerY - bufferRect.centerY());
+            // 计算变换矩阵
             matrix.setRectToRect(viewRect, bufferRect, Matrix.ScaleToFit.FILL);
+            // 计算缩放比例
             float scale = Math.max(
                     (float) screenHeight / previewSize.getHeight(),
                     (float) screenWidth / previewSize.getWidth());
+            // 对变换矩阵进行缩放
             matrix.postScale(scale, scale, centerX, centerY);
+            // 对变换矩阵进行旋转
             matrix.postRotate(90 * (rotation - 2), centerX, centerY);
         }
 

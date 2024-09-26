@@ -28,7 +28,7 @@ public class CustomViewL extends LinearLayout {
     // 屏幕宽度
     private int screenWidth;
     // 存储所有的 TextView
-    private List<TextView> textViews = new ArrayList<>();
+    List<TextView> textViews = new ArrayList<>();
 
     int index=0;
 

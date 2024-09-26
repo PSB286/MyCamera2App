@@ -5,9 +5,8 @@
         android:pivotX="50%"
         android:pivotY="50%"
         android:fromDegrees="0"
-        android:toDegrees="+360"
-        android:duration="1500"
+        android:toDegrees="90"
         android:startOffset="-1"
         android:repeatMode="restart"
-        android:repeatCount="-1"/>
+        android:repeatCount="0" />
 </set>

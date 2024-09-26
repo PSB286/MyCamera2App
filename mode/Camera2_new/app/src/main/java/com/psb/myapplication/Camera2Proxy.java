@@ -66,9 +66,9 @@ public class Camera2Proxy {
 
     /* 缩放相关 */
     private final int MAX_ZOOM = 67; // 放大的最大值，用于计算每次放大/缩小操作改变的大小
-    private int mZoom = 0; // 0~mMaxZoom之间变化
-    private float mStepWidth=25; // 每次改变的宽度大小
-    private float mStepHeight=25; // 每次改变的高度大小
+    int  mZoom = 0; // 0~mMaxZoom之间变化
+    float mStepWidth=25; // 每次改变的宽度大小
+    float mStepHeight=25; // 每次改变的高度大小
     private CameraCaptureSession.CaptureCallback mAfCaptureCallback;
 
     /**
