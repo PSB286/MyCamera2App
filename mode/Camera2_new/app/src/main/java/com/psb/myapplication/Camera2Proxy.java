@@ -5,9 +5,7 @@ import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.ImageFormat;
-import android.graphics.Matrix;
 import android.graphics.Rect;
-import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
@@ -29,70 +27,61 @@ import android.util.Size;
 import android.view.OrientationEventListener;
 import android.view.Surface;
 import android.view.SurfaceHolder;
-import android.widget.Toast;
-import android.hardware.camera2.CaptureRequest;
 
 import androidx.annotation.NonNull;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.List;
-import java.util.Objects;
 
 public class Camera2Proxy {
 
     private static final String TAG = "Camera2Proxy";
-    private final CameraActivity myapp=CameraActivity.getInstance();
-    private final Activity mActivity;
+    // Activity
+    private Activity mActivity;
+
     private int mCameraId = CameraCharacteristics.LENS_FACING_FRONT; // 要打开的摄像头ID
-    private CameraCharacteristics mCameraCharacteristics; // 相机属性
+    private Size mPreviewSize; // 预览大小
+    private Size dPreviewSize;
     private CameraManager mCameraManager; // 相机管理者
+    private CameraCharacteristics mCameraCharacteristics; // 相机属性
+    private CameraCharacteristics dCameraCharacteristics;
     private CameraDevice mCameraDevice; // 相机对象
-    private CameraCaptureSession mCaptureSession;
+    private CameraDevice dCameraDevice;
+    private CameraCaptureSession mCaptureSession;// 会话
+    private CameraCaptureSession dCaptureSession;
     CaptureRequest.Builder mPreviewRequestBuilder; // 相机预览请求的构造器
-    private CaptureRequest mPreviewRequest;
-    private Handler mBackgroundHandler;
-    private HandlerThread mBackgroundThread;
-    private ImageReader mPictureImageReader;
-    private Surface mPreviewSurface;
+    CaptureRequest.Builder dPreviewRequestBuilder;
+    private CaptureRequest mPreviewRequest;// 预览请求
+    private CaptureRequest dPreviewRequest;
+    private Handler mBackgroundHandler;// 子线程的Handler
+    private HandlerThread mBackgroundThread;// 子线程
+    private ImageReader mImageReader;// 图片读取器
+    private Surface mPreviewSurface;// 预览的Surface
     private OrientationEventListener mOrientationEventListener;
 
-    private Size mPreviewSize; // 预览大小
-    private Size mPictureSize; // 拍照大小
-    private int mDisplayRotation = 0; // 原始Sensor画面顺时针旋转该角度后，画面朝上
+    private int mDisplayRotate = 0;// 屏幕方向
     private int mDeviceOrientation = 0; // 设备方向，由相机传感器获取
-
-    /* 缩放相关 */
-    private final int MAX_ZOOM = 67; // 放大的最大值，用于计算每次放大/缩小操作改变的大小
-    int  mZoom = 0; // 0~mMaxZoom之间变化
-    float mStepWidth=25; // 每次改变的宽度大小
-    float mStepHeight=25; // 每次改变的高度大小
-    private CameraCaptureSession.CaptureCallback mAfCaptureCallback;
+    int mZoom = 0; // 缩放
 
     /**
      * 打开摄像头的回调
      */
     private CameraDevice.StateCallback mStateCallback = new CameraDevice.StateCallback() {
+       // 摄像头打开成功
         @Override
         public void onOpened(@NonNull CameraDevice camera) {
             Log.d(TAG, "onOpened");
             mCameraDevice = camera;
-            // 初始化预览请求
             initPreviewRequest();
-            // 创建预览会话
-            createCommonSession();
         }
-
-        // 摄像头被关闭
+        // 摄像头打开失败
         @Override
         public void onDisconnected(@NonNull CameraDevice camera) {
             Log.d(TAG, "onDisconnected");
             releaseCamera();
         }
-
-        // 打开摄像头失败
+        // 摄像头打开失败
         @Override
         public void onError(@NonNull CameraDevice camera, int error) {
             Log.e(TAG, "Camera Open failed, error: " + error);
@@ -104,9 +93,10 @@ public class Camera2Proxy {
     @TargetApi(Build.VERSION_CODES.M)
     public Camera2Proxy(Activity activity) {
         mActivity = activity;
-
+        // 获取摄像头管理者
+        mCameraManager = (CameraManager) mActivity.getSystemService(Context.CAMERA_SERVICE);
+        // 方向监听器
         mOrientationEventListener = new OrientationEventListener(mActivity) {
-            // 方向改变
             @Override
             public void onOrientationChanged(int orientation) {
                 mDeviceOrientation = orientation;
@@ -114,44 +104,26 @@ public class Camera2Proxy {
         };
     }
 
-    // 设置预览输出尺寸
-    public void setUpCameraOutputs(int width, int height) {
-        mCameraManager = (CameraManager) mActivity.getSystemService(Context.CAMERA_SERVICE);
-        try {
-            mCameraCharacteristics = mCameraManager.getCameraCharacteristics(Integer.toString(mCameraId));
-            StreamConfigurationMap map = mCameraCharacteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
-            assert map != null;
-            Size[] supportPictureSizes = map.getOutputSizes(ImageFormat.JPEG);
-            Size pictureSize = Collections.max(Arrays.asList(supportPictureSizes), new CompareSizesByArea());
-            float aspectRatio = pictureSize.getHeight() * 1.0f / pictureSize.getWidth();
-            Size[] supportPreviewSizes = map.getOutputSizes(SurfaceTexture.class);
-            // 一般相机页面都是固定竖屏，宽是短边，所以根据view的宽度来计算需要的预览大小
-            Size previewSize = chooseOptimalSize(supportPreviewSizes, width, aspectRatio);
-            Log.d(TAG, "pictureSize: " + pictureSize);
-            Log.d(TAG, "previewSize: " + previewSize);
-            mPictureSize = pictureSize;
-            mPreviewSize = previewSize;
-        } catch (CameraAccessException e) {
-            e.printStackTrace();
-        }
-    }
-
-    // 打开摄像头
     @SuppressLint("MissingPermission")
-    public void openCamera() {
+    public void openCamera(int width, int height) {
         Log.v(TAG, "openCamera");
-        // 开启后台线程
         startBackgroundThread(); // 对应 releaseCamera() 方法中的 stopBackgroundThread()
-        // 注册方向监听器
+        // 注册方向传感器
         mOrientationEventListener.enable();
         try {
-            // 获取相机属性
+            // 获取摄像头属性
             mCameraCharacteristics = mCameraManager.getCameraCharacteristics(Integer.toString(mCameraId));
-            // 每次切换摄像头计算一次就行，结果缓存到成员变量中
-            // 计算预览方向
-            initDisplayRotation();
-            // 初始化缩放参数
-            initZoomParameter();
+            // 获取支持的预览输出尺寸
+            StreamConfigurationMap map = mCameraCharacteristics.get(CameraCharacteristics
+                    .SCALER_STREAM_CONFIGURATION_MAP);
+            // 拍照大小，选择能支持的一个最大的图片大小
+            Size largest = Collections.max(Arrays.asList(map.getOutputSizes(ImageFormat.JPEG)), new CompareSizesByArea());
+            Log.d(TAG, "picture size: " + largest.getWidth() + "*" + largest.getHeight());
+            // 图片读取器，用于获取拍照的图片
+            mImageReader = ImageReader.newInstance(largest.getWidth(), largest.getHeight(), ImageFormat.JPEG, 2);
+            // 预览大小，根据上面选择的拍照图片的长宽比，选择一个和控件长宽差不多的大小
+            mPreviewSize = chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class), width, height, largest);
+            Log.d(TAG, "preview size: " + mPreviewSize.getWidth() + "*" + mPreviewSize.getHeight());
             // 打开摄像头
             mCameraManager.openCamera(Integer.toString(mCameraId), mStateCallback, mBackgroundHandler);
         } catch (CameraAccessException e) {
@@ -159,45 +131,6 @@ public class Camera2Proxy {
         }
     }
 
-    // 初始化预览请求
-    private void initDisplayRotation() {
-        int displayRotation = mActivity.getWindowManager().getDefaultDisplay().getRotation();
-        switch (displayRotation) {
-            case Surface.ROTATION_0:
-                displayRotation = 90;
-                break;
-            case Surface.ROTATION_90:
-                displayRotation = 0;
-                break;
-            case Surface.ROTATION_180:
-                displayRotation = 270;
-                break;
-            case Surface.ROTATION_270:
-                displayRotation = 180;
-                break;
-        }
-        int sensorOrientation = mCameraCharacteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
-        mDisplayRotation = (displayRotation + sensorOrientation + 270) % 360;
-        Log.d(TAG, "mDisplayRotation: " + mDisplayRotation);
-    }
-
-    // 计算最大放大倍数
-    private void initZoomParameter() {
-        // crop_rect 表示裁剪区域
-        Rect rect = mCameraCharacteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE);
-        Log.d(TAG, "sensor_info_active_array_size: " + rect);
-        // max_digital_zoom 表示 active_rect 除以 crop_rect 的最大值
-        float max_digital_zoom = mCameraCharacteristics.get(CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM);
-        Log.d(TAG, "max_digital_zoom: " + max_digital_zoom);
-        // crop_rect的最小宽高
-        float minWidth = rect.width() / max_digital_zoom;
-        float minHeight = rect.height() / max_digital_zoom;
-        // 因为缩放时两边都要变化，所以要除以2
-        mStepWidth = (rect.width() - minWidth) / MAX_ZOOM / 2;
-        mStepHeight = (rect.height() - minHeight) / MAX_ZOOM / 2;
-    }
-
-    // 释放摄像头
     public void releaseCamera() {
         Log.v(TAG, "releaseCamera");
         if (null != mCaptureSession) {
@@ -208,98 +141,102 @@ public class Camera2Proxy {
             mCameraDevice.close();
             mCameraDevice = null;
         }
-        if (mPictureImageReader != null) {
-            mPictureImageReader.close();
-            mPictureImageReader = null;
+        if (mImageReader != null) {
+            mImageReader.close();
+            mImageReader = null;
         }
         mOrientationEventListener.disable();
         stopBackgroundThread(); // 对应 openCamera() 方法中的 startBackgroundThread()
     }
 
-    // 设置预览输出
+    public void setImageAvailableListener(ImageReader.OnImageAvailableListener onImageAvailableListener) {
+        if (mImageReader == null) {
+            Log.w(TAG, "setImageAvailableListener: mImageReader is null");
+            return;
+        }
+        mImageReader.setOnImageAvailableListener(onImageAvailableListener, null);
+    }
+
     public void setPreviewSurface(SurfaceHolder holder) {
         mPreviewSurface = holder.getSurface();
     }
-    // 设置预览输出
+
+    // 设置预览输出的SurfaceTextures
     public void setPreviewSurface(SurfaceTexture surfaceTexture) {
+        // 设置预览输出的SurfaceTexture的默认缓冲区大小
         surfaceTexture.setDefaultBufferSize(mPreviewSize.getWidth(), mPreviewSize.getHeight());
+        // 创建一个 Surface
         mPreviewSurface = new Surface(surfaceTexture);
     }
-    // 设置图片输出尺寸
-    private void createCommonSession() {
-        List<Surface> outputs = new ArrayList<>();
-        // preview output
-        if (mPreviewSurface != null) {
-            Log.d(TAG, "createCommonSession add target mPreviewSurface");
-            outputs.add(mPreviewSurface);
-        }
-        // picture output
-        Size pictureSize = mPictureSize;
-        if (pictureSize != null) {
-            Log.d(TAG, "createCommonSession add target mPictureImageReader");
-            mPictureImageReader = ImageReader.newInstance(pictureSize.getWidth(), pictureSize.getHeight(), ImageFormat.JPEG, 1);
-            outputs.add(mPictureImageReader.getSurface());
-        }
-        try {
-            // 一个session中，所有CaptureRequest能够添加的target，必须是outputs的子集，所以在创建session的时候需要都添加进来
-            mCameraDevice.createCaptureSession(outputs, new CameraCaptureSession.StateCallback() {
 
-                @Override
-                public void onConfigured(@NonNull CameraCaptureSession session) {
-                    mCaptureSession = session;
-                    startPreview();
-                }
-
-                @Override
-                public void onConfigureFailed(@NonNull CameraCaptureSession session) {
-                    Log.e(TAG, "ConfigureFailed. session: " + session);
-                }
-            }, mBackgroundHandler); // handle 传入 null 表示使用当前线程的 Looper
-        } catch (CameraAccessException e) {
-            e.printStackTrace();
-        }
-    }
-
-    // 初始化预览请求
     private void initPreviewRequest() {
-        if (mPreviewSurface == null) {
-            Log.e(TAG, "initPreviewRequest failed, mPreviewSurface is null");
-            return;
-        }
         try {
+            // 创建预览请求的构造器
             mPreviewRequestBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
-            // 设置预览输出的 Surface
-            mPreviewRequestBuilder.addTarget(mPreviewSurface);
-            // 设置连续自动对焦
-            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
-            // 设置自动曝光
-            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
-            // 设置自动白平衡
-            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AWB_MODE, CaptureRequest.CONTROL_AWB_MODE_AUTO);
+            // 添加预览输出的 Surface
+            mPreviewRequestBuilder.addTarget(mPreviewSurface); // 设置预览输出的 Surface
+            // 创建会话，并设置预览输出的 Surface 和拍照输出的 ImageReader 的 Surface
+            mCameraDevice.createCaptureSession(Arrays.asList(mPreviewSurface, mImageReader.getSurface()),
+                    new CameraCaptureSession.StateCallback() {
+                        // 会话创建成功
+                        @Override
+                        public void onConfigured(@NonNull CameraCaptureSession session) {
+                            mCaptureSession = session;
+                            // 设置连续自动对焦
+                            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest
+                                    .CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+                            // 设置自动曝光
+                            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest
+                                    .CONTROL_AE_MODE_ON_AUTO_FLASH);
+                            // 设置完后自动开始预览
+                            mPreviewRequest = mPreviewRequestBuilder.build();
+                            // 开始预览
+                            startPreview();
+                        }
+
+                        @Override
+                        public void onConfigureFailed(@NonNull CameraCaptureSession session) {
+                            Log.e(TAG, "ConfigureFailed. session: mCaptureSession");
+                        }
+                    }, mBackgroundHandler); // handle 传入 null 表示使用当前线程的 Looper
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
     }
-    // 开始预览
+
     public void startPreview() {
-        Log.v(TAG, "startPreview");
+        Log.v("--startPreview--", "startPreview");
         if (mCaptureSession == null || mPreviewRequestBuilder == null) {
-            Log.w(TAG, "startPreview: mCaptureSession or mPreviewRequestBuilder is null");
+            Log.w("--startPreview--", "startPreview: mCaptureSession or mPreviewRequestBuilder is null");
             return;
         }
         try {
             // 开始预览，即一直发送预览的请求
-            CaptureRequest captureRequest = mPreviewRequestBuilder.build();
-            mCaptureSession.setRepeatingRequest(captureRequest, null, mBackgroundHandler);
+            mCaptureSession.setRepeatingRequest(mPreviewRequest, null, mBackgroundHandler);
+
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
     }
-    // 停止预览
+
+    public void startPreview(CameraCaptureSession mCaptureSession,CaptureRequest.Builder mPreviewRequestBuilder) {
+        Log.v("--startPreview--", "startPreview");
+        if (mCaptureSession == null || mPreviewRequestBuilder == null) {
+            Log.w("--startPreview--", "startPreview: mCaptureSession or mPreviewRequestBuilder is null");
+            return;
+        }
+        try {
+            // 开始预览，即一直发送预览的请求
+            mCaptureSession.setRepeatingRequest(mPreviewRequest, null, mBackgroundHandler);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+    }
+
     public void stopPreview() {
         Log.v(TAG, "stopPreview");
-        if (mCaptureSession == null) {
-            Log.w(TAG, "stopPreview: mCaptureSession is null");
+        if (mCaptureSession == null || mPreviewRequestBuilder == null) {
+            Log.w(TAG, "stopPreview: mCaptureSession or mPreviewRequestBuilder is null");
             return;
         }
         try {
@@ -308,27 +245,30 @@ public class Camera2Proxy {
             e.printStackTrace();
         }
     }
-    // 拍照
-    public void captureStillPicture(ImageReader.OnImageAvailableListener onImageAvailableListener) {
-        if (mPictureImageReader == null) {
-            Log.w(TAG, "captureStillPicture failed! mPictureImageReader is null");
-            return;
-        }
-        mPictureImageReader.setOnImageAvailableListener(onImageAvailableListener, mBackgroundHandler);
+
+    public void captureStillPicture() {
         try {
-            // 创建一个用于拍照的Request
-            CaptureRequest.Builder captureBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
-            captureBuilder.addTarget(mPictureImageReader.getSurface());
+            // 创建拍照请求的构造器
+            CaptureRequest.Builder captureBuilder = mCameraDevice.createCaptureRequest(CameraDevice
+                    .TEMPLATE_STILL_CAPTURE);
+            // 设置预览输出的Surface
+            captureBuilder.addTarget(mImageReader.getSurface());
+            // 设置自动对焦模式
             captureBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+            // 设置自动曝光
             captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, getJpegOrientation(mDeviceOrientation));
             // 预览如果有放大，拍照的时候也应该保存相同的缩放
             Rect zoomRect = mPreviewRequestBuilder.get(CaptureRequest.SCALER_CROP_REGION);
+            // 设置预览输出的Surface
             if (zoomRect != null) {
                 captureBuilder.set(CaptureRequest.SCALER_CROP_REGION, zoomRect);
             }
-            stopPreview();
+            // 暂定预览
+            mCaptureSession.stopRepeating();
+            // 拍照
             mCaptureSession.abortCaptures();
             final long time = System.currentTimeMillis();
+            // 设置拍照的回调
             mCaptureSession.capture(captureBuilder.build(), new CameraCaptureSession.CaptureCallback() {
                 @Override
                 public void onCaptureCompleted(@NonNull CameraCaptureSession session,
@@ -336,11 +276,15 @@ public class Camera2Proxy {
                                                @NonNull TotalCaptureResult result) {
                     Log.w(TAG, "onCaptureCompleted, time: " + (System.currentTimeMillis() - time));
                     try {
-                        mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_CANCEL);
+                        // 取消对焦
+                        mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata
+                                .CONTROL_AF_TRIGGER_CANCEL);
+                        // 发送预览的请求
                         mCaptureSession.capture(mPreviewRequestBuilder.build(), null, mBackgroundHandler);
                     } catch (CameraAccessException e) {
                         e.printStackTrace();
                     }
+                    // 重新开始预览
                     startPreview();
                 }
             }, mBackgroundHandler);
@@ -364,273 +308,321 @@ public class Camera2Proxy {
         Log.d(TAG, "jpegOrientation: " + jpegOrientation);
         return jpegOrientation;
     }
-    // 是否为前置摄像头
+
+    // 判断是否为前置摄像头
     public boolean isFrontCamera() {
         return mCameraId == CameraCharacteristics.LENS_FACING_BACK;
     }
+
     // 获取预览尺寸
     public Size getPreviewSize() {
         return mPreviewSize;
     }
-    // 设置预览尺寸
-    public void setPreviewSize(Size previewSize) {
-        mPreviewSize = previewSize;
-    }
-    // 获取拍照尺寸
-    public Size getPictureSize() {
-        return mPictureSize;
-    }
-    // 设置拍照尺寸
-    public void setPictureSize(Size pictureSize) {
-        mPictureSize = pictureSize;
-    }
+
     // 切换摄像头
-    public void switchCamera() {
+    public void switchCamera(int width, int height) {
         mCameraId ^= 1;
         Log.d(TAG, "switchCamera: mCameraId: " + mCameraId);
         releaseCamera();
-        openCamera();
+        openCamera(width, height);
     }
-    // 处理缩放
-    public void handleZoom(boolean isZoomIn,CameraDevice CameraDevice,CameraCharacteristics CameraCharacteristics,CaptureRequest.Builder PreviewRequestBuilder,CameraCaptureSession captureSession) {
-        if (CameraDevice == null || CameraCharacteristics == null || mPreviewRequestBuilder == null) {
-            return;
+
+    // 选择合适的预览尺寸
+    Size chooseOptimalSize(Size[] sizes, int viewWidth, int viewHeight, Size pictureSize) {
+        // 1. 先找到与预览view的宽高比最接近的尺寸
+        int totalRotation = getRotation();
+        // 2. 遍历所有尺寸，找到最接近的尺寸
+        boolean swapRotation = totalRotation == 90 || totalRotation == 270;
+        // 3. 遍历所有尺寸，找到最接近的尺寸
+        int width = swapRotation ? viewHeight : viewWidth;
+        // 4. 遍历所有尺寸，找到最接近的尺寸
+        int height = swapRotation ? viewWidth : viewHeight;
+        // 5. 遍历所有尺寸，找到最接近的尺寸
+        return getSuitableSize(sizes, width, height, pictureSize);
+    }
+
+    // 获取旋转角度
+    private int getRotation() {
+        // 获取屏幕旋转角度
+        int displayRotation = mActivity.getWindowManager().getDefaultDisplay().getRotation();
+       // 屏幕旋转角度转成90度的倍数
+        switch (displayRotation) {
+            case Surface.ROTATION_0:
+                displayRotation = 90;
+                break;
+            case Surface.ROTATION_90:
+                displayRotation = 0;
+                break;
+            case Surface.ROTATION_180:
+                displayRotation = 270;
+                break;
+            case Surface.ROTATION_270:
+                displayRotation = 180;
+                break;
         }
-        mCaptureSession=captureSession;
+        // 获取屏幕旋转角度
+        int sensorOrientation = mCameraCharacteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
+        // 计算出最终的旋转角度
+        mDisplayRotate = (displayRotation + sensorOrientation + 270) % 360;
+        // Log.d(TAG, "getRotation: displayRotation: " + displayRotation + ", sensorOrientation: " + sensorOrientation + ", mDisplayRotate: " + mDisplayRotate);
+        return mDisplayRotate;
+    }
+
+    // 选择合适的尺寸
+    private Size getSuitableSize(Size[] sizes, int width, int height, Size pictureSize) {
+        int minDelta = Integer.MAX_VALUE; // 最小的差值，初始值应该设置大点保证之后的计算中会被重置
+        int index = 0; // 最小的差值对应的索引坐标
+        // 先找到与预览view的宽高比最接近的尺寸
+        float aspectRatio = pictureSize.getHeight() * 1.0f / pictureSize.getWidth();
+        Log.d(TAG, "getSuitableSize. aspectRatio: " + aspectRatio);
+        // 遍历所有尺寸，找到最接近的尺寸
+        for (int i = 0; i < sizes.length; i++) {
+            Size size = sizes[i];
+            // 先判断比例是否相等
+            if (size.getWidth() * aspectRatio == size.getHeight()) {
+                int delta = Math.abs(width - size.getWidth());
+                if (delta == 0) {
+                    return size;
+                }
+                if (minDelta > delta) {
+                    minDelta = delta;
+                    index = i;
+                }
+            }
+        }
+        // 返回最接近的尺寸
+        return sizes[index];
+    }
+
+    // 放大缩小
+    public void handleZoom(boolean isZoomIn,CameraDevice CameraDevice,CameraCharacteristics CameraCharacteristics,CaptureRequest.Builder PreviewRequestBuilder,CaptureRequest PreviewRequest,CameraCaptureSession mCaptureSession) {
         mCameraDevice=CameraDevice;
         mCameraCharacteristics=CameraCharacteristics;
         mPreviewRequestBuilder=PreviewRequestBuilder;
+        mPreviewRequest=PreviewRequest;
 
-        // Toast.makeText(mActivity, "进入缩放", Toast.LENGTH_SHORT).show();
-        Log.d("handleZoom", "handleZoom: " + isZoomIn);
-        if (isZoomIn && (mZoom < MAX_ZOOM)) { // 放大
-            //Toast.makeText(mActivity, "放大", Toast.LENGTH_SHORT).show();
-            Log.d("handleZoom", "放大");
-            mZoom++;
-        } else if (mZoom > 0) { // 缩小
-            //Toast.makeText(mActivity, "缩小", Toast.LENGTH_SHORT).show();
-            Log.d("handleZoom", "缩小");
-            mZoom--;
+
+        if (mCameraDevice == null || mCameraCharacteristics == null || mPreviewRequestBuilder == null) {
+           Log.v("--Zoom--","mCameraDevice:"+mCameraDevice+" mCameraCharacteristics:"+mCameraCharacteristics+" mPreviewRequestBuilder:"+mPreviewRequestBuilder);
+            return;
         }
 
-        Log.d("handleZoom", "handleZoom: mZoom: " + mZoom);
-
-        // 获取当前 crop 区域
+        // maxZoom 表示 active_rect 宽度除以 crop_rect 宽度的最大值
+        float maxZoom = mCameraCharacteristics.get(android.hardware.camera2.CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM);
+        Log.d("--Zoom--", "handleZoom: maxZoom: " + maxZoom);
+        int factor = 100; // 放大/缩小的一个因素，设置越大越平滑，相应放大的速度也越慢
+        if (isZoomIn && mZoom < factor) {
+            mZoom++;
+        } else if (mZoom > 0) {
+            mZoom--;
+        }
+        Log.d("--Zoom--", "handleZoom: mZoom: " + mZoom);
+        // 计算出 crop_rect
         Rect rect = mCameraCharacteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE);
-        Log.d("handleZoom", "rect: " + rect);
-
-
-        int cropW = (int) (mStepWidth * mZoom);
-        int cropH = (int) (mStepHeight * mZoom);
-        Log.d("handleZoom", "cropW: " + cropW + ", cropH: " + cropH);
-        // 计算出裁剪区域
+        // 计算出 crop_rect 的最小值
+        int minW = (int) ((rect.width() - rect.width() / maxZoom) / (2 * factor));
+        // 计算出 crop_rect 的最大值
+        int minH = (int) ((rect.height() - rect.height() / maxZoom) / (2 * factor));
+        // 计算出 crop_rect 的放大缩小值
+        int cropW = minW * mZoom;
+        // 计算出 crop_rect 的放大缩小值
+        int cropH = minH * mZoom;
+        // 计算出 crop_rect
+        Log.d(TAG, "handleZoom: cropW: " + cropW + ", cropH: " + cropH);
+        // 计算出 crop_rect
         Rect zoomRect = new Rect(rect.left + cropW, rect.top + cropH, rect.right - cropW, rect.bottom - cropH);
-
-        Log.d("handleZoom", "zoomRect: " + zoomRect);
-        // 设置裁剪区域
+        // 设置 crop_rect
         mPreviewRequestBuilder.set(CaptureRequest.SCALER_CROP_REGION, zoomRect);
-        //myapp.
-        startPreview(); // 需要重新 start preview 才能生效
+        // 提交设置
+        mPreviewRequest = mPreviewRequestBuilder.build();
+        if(mCaptureSession==null||mPreviewRequestBuilder==null)
+        {
+            Log.d("--Zoom--","mCaptureSession:"+mCaptureSession+" mPreviewRequestBuilder:"+mPreviewRequestBuilder);
+        }
+        startPreview(mCaptureSession,mPreviewRequestBuilder); // 需要重新 start preview 才能生效
     }
+
+    int i=0;
     // 对焦
-    public void triggerFocusAtPoint(float x, float y, int width, int height,CaptureRequest.Builder PreviewRequestBuilder,CameraCaptureSession CaptureSession) {
-       // Log.d(TAG, "triggerFocusAtPoint (" + x + ", " + y + ")");
-        mPreviewRequestBuilder=PreviewRequestBuilder;
-        mCaptureSession=CaptureSession;
-        Log.d("triggerFocusAtPoint", "triggerFocusAtPoint: " + x + ", " + y);
-        // 计算出在屏幕坐标系下的区域
+    public void focusOnPoint(double x, double y, int width, int height,CameraDevice CameraDevice,CaptureRequest.Builder PreviewRequestBuilder,CameraCaptureSession CaptureSession,Size PreviewSize,AutoFitTextureView mTextureView) {
+
+        dCameraDevice=CameraDevice;
+        dPreviewRequestBuilder=PreviewRequestBuilder;
+        dCaptureSession=CaptureSession;
+        dPreviewSize=PreviewSize;
+
+        mCameraDevice=dCameraDevice;
+        mPreviewRequestBuilder=dPreviewRequestBuilder;
+        mPreviewSize=dPreviewSize;
+        mCaptureSession = dCaptureSession;
+
+        // 判断是否已经打开摄像头
+        if (mCameraDevice == null || mPreviewRequestBuilder == null) {
+            return;
+        }
+
+        // 1. 先取相对于view上面的坐标
+        int previewWidth = mPreviewSize.getWidth();
+        int previewHeight = mPreviewSize.getHeight();
+        Log.d("--focusOnPoint--", "focusOnPoint: previewWidth: " + previewWidth + ", previewHeight: " + previewHeight);
+        if (mDisplayRotate == 90 || mDisplayRotate == 270) {
+            previewWidth = mPreviewSize.getHeight();
+            previewHeight = mPreviewSize.getWidth();
+        }
+        // 2. 计算摄像头取出的图像相对于view放大了多少，以及有多少偏移
+        double tmp;// 临时变量
+        double imgScale;// 图像的放大倍数
+        double verticalOffset = 0;// 垂直偏移
+        double horizontalOffset = 0;// 水平偏移
+
+        if (previewHeight * width > previewWidth * height) {
+            imgScale = width * 1.0 / previewWidth;// 图像放大的倍数
+            verticalOffset = (previewHeight - height / imgScale) / 2;// 垂直偏移
+        } else {
+            imgScale = height * 1.0 / previewHeight;// 图像放大的倍数
+            horizontalOffset = (previewWidth - width / imgScale) / 2;// 水平偏移
+        }
+        Log.d("--focusOnPoint--", "focusOnPoint: imgScale: " + imgScale + ", verticalOffset: " + verticalOffset + ", horizontalOffset: " + horizontalOffset);
+
+        // 3. 将点击的坐标转换为图像上的坐标
+        x = x / imgScale + horizontalOffset;// 图像x坐标
+        y = y / imgScale + verticalOffset;// 图像y坐标
+        // 图像坐标旋转
+        if (90 == mDisplayRotate) {
+            tmp = x;
+            x = y;
+            y = mPreviewSize.getHeight() - tmp;
+        }// 旋转
+        else if (270 == mDisplayRotate) {
+            tmp = x;
+            x = mPreviewSize.getWidth() - y;
+            y = tmp;
+        }
+        Log.d("--focusOnPoint--", "focusOnPoint: x: " + x + ", y: " + y);
+
+
+        // 4. 计算取到的图像相对于裁剪区域的缩放系数，以及位移
         Rect cropRegion = mPreviewRequestBuilder.get(CaptureRequest.SCALER_CROP_REGION);
-        Log.d("triggerFocusAtPoint", "cropRegion: " + cropRegion);
-        // 计算出在传感器坐标系下的区域
-        MeteringRectangle afRegion = getAFAERegion(x, y, width, height, 1f, cropRegion);
-        // ae的区域比af的稍大一点，聚焦的效果比较好
-        MeteringRectangle aeRegion = getAFAERegion(x, y, width, height, 1.5f, cropRegion);
-        // 设置对焦区域
-        mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_REGIONS, new MeteringRectangle[]{afRegion});
-        // 设置测光区域
-        mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_REGIONS, new MeteringRectangle[]{aeRegion});
+        // 裁剪区域
+        if (cropRegion == null) {
+            Log.w(TAG, "can't get crop region");
+            // 默认取全部区域
+            cropRegion = mCameraCharacteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE);
+        }
+        //获取区域宽高
+        int cropWidth = cropRegion.width();
+        int cropHeight = cropRegion.height();
+        // 图像坐标旋转
+        if (mPreviewSize.getHeight() * cropWidth > mPreviewSize.getWidth() * cropHeight) {
+            // 图像放大的倍数
+            imgScale = cropHeight * 1.0 / mPreviewSize.getHeight();
+            verticalOffset = 0;
+            // 水平偏移
+            horizontalOffset = (cropWidth - imgScale * mPreviewSize.getWidth()) / 2;
+        } else {
+            // 图像放大的倍数
+            imgScale = cropWidth * 1.0 / mPreviewSize.getWidth();
+            horizontalOffset = 0;
+            // 垂直偏移
+            verticalOffset = (cropHeight - imgScale * mPreviewSize.getHeight()) / 2;
+        }
+        Log.d("--focusOnPoint--", "focusOnPoint: cropWidth: " + cropWidth + ", cropHeight: " + cropHeight + ", imgScale: " + imgScale + ", verticalOffset: " + verticalOffset + ", horizontalOffset: " + horizontalOffset);
+        // 5. 将点击区域相对于图像的坐标，转化为相对于成像区域的坐标（点击的中心坐标）
+        x = x * imgScale + horizontalOffset + cropRegion.left;
+        y = y * imgScale + verticalOffset + cropRegion.top;
+        double tapAreaRatio = 0.1;// 点击区域相对于裁剪区域的比例大小
+        //计算出点击区域相对于 crop_rect 的坐标（）
+        Rect rect = new Rect();
+        rect.left = clamp((int) (x - tapAreaRatio / 2 * cropRegion.width()), 0, cropRegion.width());
+        rect.right = clamp((int) (x + tapAreaRatio / 2 * cropRegion.width()), 0, cropRegion.width());
+        rect.top = clamp((int) (y - tapAreaRatio / 2 * cropRegion.height()), 0, cropRegion.height());
+        rect.bottom = clamp((int) (y + tapAreaRatio / 2 * cropRegion.height()), 0, cropRegion.height());
 
-        // 设置对焦模式
+        rect.set(360-50,360-50,360+50,360+50);
+
+        // 6. 设置 AF、AE 的测光区域，即上述得到的 rect
+        mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_REGIONS, new MeteringRectangle[]{new MeteringRectangle
+                (rect, 1000)});
+        mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_REGIONS, new MeteringRectangle[]{new MeteringRectangle
+                (rect, 1000)});
+
+        // 设置对焦模式为 自动
         mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_AUTO);
-        // 开始对焦
-        mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_START);
-        // 开始预取
-        mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER, CameraMetadata.CONTROL_AE_PRECAPTURE_TRIGGER_START);
-        //检测焦点状态
-      //  Log.d("triggerFocusAtPoint", "triggerFocusAtPoint: afState: 1" );
-        mAfCaptureCallback = new CameraCaptureSession.CaptureCallback() {
-            // 对焦状态回调
-            @Override
-            public void onCaptureCompleted(@NonNull CameraCaptureSession session,
-                                           @NonNull CaptureRequest request,
-                                           @NonNull TotalCaptureResult result) {
-                try {
-                    process(result);
-                } catch (CameraAccessException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-
-        };
-     //   Log.d("mAfCaptureCallback", "1triggerFocusAtPoint: 2");
+        // 设置对焦模式为 连续对焦
+        //mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+        // 开启自动对焦触发
+       // mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_START);
+        //mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_START);
+        // 开启自动曝光触发
+        mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER, CameraMetadata
+               .CONTROL_AE_PRECAPTURE_TRIGGER_START);
         try {
-           // Log.d("mAfCaptureCallback", "1triggerFocusAtPoint: 1");
-            // 发送对焦请求
-            mCaptureSession.capture(mPreviewRequestBuilder.build(), mAfCaptureCallback,null);
-          //  Log.d("triggerFocusAtPoint", "1triggerFocusAtPoint: 2");
+            // 7. 发送上述设置的对焦请求，并监听回调
+            mCaptureSession.capture(mPreviewRequestBuilder.build(), null, mBackgroundHandler);
+
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
     }
-
-    private void process(TotalCaptureResult result) throws CameraAccessException {
-        if (result == null) {
-            Toast.makeText(mActivity, "Result is null", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        // 获取焦点状态
-        Integer state = result.get(CaptureResult.CONTROL_AF_STATE);
-
-        if (state == null) {
-            Log.e("mAfCaptureCallback", "STATE is null");
-            Toast.makeText(mActivity, "STATE is null", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        Toast.makeText(mActivity, "state: " + state, Toast.LENGTH_SHORT).show();
-        // 检查焦点状态
-//        if (Objects.equals(state, CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED)
-//                || Objects.equals(state, CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED)) {
-            Toast.makeText(mActivity, "对焦成功", Toast.LENGTH_SHORT).show();
-            // 设置相关参数
-            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CaptureRequest.CONTROL_AF_TRIGGER_CANCEL);
-            // 设置对焦模式
-            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
-            // 关闭自动曝光
-            //mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF);
-            // 启动预览
-            startPreview();
-//        } else {
-//            // 对焦失败，记录日志并提示用户
-//            Log.w(TAG, "对焦失败，状态：" + state);
-//            Toast.makeText(mActivity, "对焦失败，请调整相机位置或光线", Toast.LENGTH_SHORT).show();
-//            //尝试重新对焦
-//            retryAutoFocus();
-//        }
-    }
-
-    // 获取对焦区域
-    MeteringRectangle getAFAERegion(float x, float y, int viewWidth, int viewHeight, float multiple, Rect cropRegion) {
-        Log.v(TAG, "getAFAERegion enter");
-        Log.d(TAG, "point: [" + x + ", " + y + "], viewWidth: " + viewWidth + ", viewHeight: " + viewHeight);
-        Log.d(TAG, "multiple: " + multiple);
-        // do rotate and mirror
-        RectF viewRect = new RectF(0, 0, viewWidth, viewHeight);
-        Matrix matrix1 = new Matrix();
-        matrix1.setRotate(mDisplayRotation);
-        matrix1.postScale(isFrontCamera() ? -1 : 1, 1);
-        matrix1.invert(matrix1);
-        matrix1.mapRect(viewRect);
-        // get scale and translate matrix
-        Matrix matrix2 = new Matrix();
-        RectF cropRect = new RectF(cropRegion);
-        matrix2.setRectToRect(viewRect, cropRect, Matrix.ScaleToFit.CENTER);
-        Log.d(TAG, "viewRect: " + viewRect);
-        Log.d(TAG, "cropRect: " + cropRect);
-        // get out region
-        int side = (int) (Math.max(viewWidth, viewHeight) / 8 * multiple);
-        RectF outRect = new RectF(x - side / 2, y - side / 2, x + side / 2, y + side / 2);
-        Log.d(TAG, "outRect before: " + outRect);
-        matrix1.mapRect(outRect);
-        matrix2.mapRect(outRect);
-        Log.d(TAG, "outRect after: " + outRect);
-        // 做一个clamp，测光区域不能超出cropRegion的区域
-        Rect meteringRect = new Rect((int) outRect.left, (int) outRect.top, (int) outRect.right, (int) outRect.bottom);
-        meteringRect.left = clamp(meteringRect.left, cropRegion.left, cropRegion.right);
-        meteringRect.top = clamp(meteringRect.top, cropRegion.top, cropRegion.bottom);
-        meteringRect.right = clamp(meteringRect.right, cropRegion.left, cropRegion.right);
-        meteringRect.bottom = clamp(meteringRect.bottom, cropRegion.top, cropRegion.bottom);
-        Log.d(TAG, "meteringRegion: " + meteringRect);
-        return new MeteringRectangle(meteringRect, 1000);
-    }
     // 对焦回调
-//    private CameraCaptureSession.CaptureCallback mAfCaptureCallback = new CameraCaptureSession.CaptureCallback() {
-//
-//       // 对焦回调
-//        private void process(CaptureResult result) throws CameraAccessException {
-//            Log.d("mAfCaptureCallback", "process: ");
-//            if (result == null) {
-//                Toast.makeText(mActivity, "Result is null", Toast.LENGTH_SHORT).show();
-//                return;
-//            }
-//            // 获取焦点状态
-//            Integer state = result.get(CaptureResult.CONTROL_AF_STATE);
-//           // Log.d("mAfCaptureCallback", "process: oldstate: " + state);
-//            if (state == null) {
-//                Log.e("mAfCaptureCallback", "STATE is null");
-//                Toast.makeText(mActivity, "STATE is null", Toast.LENGTH_SHORT).show();
-//                return;
-//            }
-//            Log.d("mAfCaptureCallback", "oldCONTROL_AF_STATE: " + state);
-//
-//            // 显示进入 Process 的提示
-//            Toast.makeText(mActivity, "进入Process", Toast.LENGTH_SHORT).show();
-//
-//            // 检查焦点状态
-//            if (Objects.equals(state, CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED)
-//                    || Objects.equals(state, CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED)) {
-//                Toast.makeText(mActivity, "对焦成功", Toast.LENGTH_SHORT).show();
-//                // 设置相关参数
-//                mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CaptureRequest.CONTROL_AF_TRIGGER_CANCEL);
-//                // 设置对焦模式
-//                mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
-//                // 关闭自动曝光
-//                mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF);
-//                // 启动预览
-//                startPreview();
-//           } else {
-//                // 对焦失败，记录日志并提示用户
-//                Log.w(TAG, "对焦失败，状态：" + state);
-//                Toast.makeText(mActivity, "对焦失败，请调整相机位置或光线", Toast.LENGTH_SHORT).show();
-//                 //尝试重新对焦
-//              //  retryAutoFocus();
-//            }
-//        }
-//
-        private void retryAutoFocus() throws CameraAccessException {
-            // 重新触发自动对焦
-            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CaptureRequest.CONTROL_AF_TRIGGER_START);
-            // 提交新的请求
+    private final CameraCaptureSession.CaptureCallback mAfCaptureCallback = new CameraCaptureSession.CaptureCallback() {
 
-            mCaptureSession.setRepeatingRequest(mPreviewRequestBuilder.build(), null, null);
-            mCaptureSession.capture(mPreviewRequestBuilder.build(), mAfCaptureCallback, mBackgroundHandler);
+        // 对焦回调
+        private void process(CaptureResult result) {
+            // 获取对焦状态
+            Integer state = result.get(CaptureResult.CONTROL_AF_STATE);
+            // 对焦状态为空，直接返回
+            if (null == state) {
+                return;
+            }
+
+            // 对焦状态为对焦完成，开始正常预览
+            Log.d(TAG, "--onCaptureCompleted--: CONTROL_AF_STATE: " + state);
+            if (state == CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED || state == CaptureResult
+                    .CONTROL_AF_STATE_NOT_FOCUSED_LOCKED) {
+                Log.d("--onCaptureCompleted--", "--process--: start normal preview");
+
+               // mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_CANCEL);
+               // mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest
+               //         .CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+               // mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.FLASH_MODE_OFF);
+                mPreviewRequest=mPreviewRequestBuilder.build();
+                startPreview(mCaptureSession,mPreviewRequestBuilder);
+            }
         }
-//
-//        // ae
-////        @Override
-////        public void onCaptureProgressed(@NonNull CameraCaptureSession session,
-////                                        @NonNull CaptureRequest request,
-////                                        @NonNull CaptureResult partialResult) {
-////            //Toast.makeText(mActivity, "--onCaptureProgressed--", Toast.LENGTH_SHORT).show();
-////            try {
-////                process(partialResult);
-////            } catch (CameraAccessException e) {
-////                throw new RuntimeException(e);
-////            }
-////        }
-//
-//        // ae
-//        @Override
-//        public void onCaptureCompleted(@NonNull CameraCaptureSession session,
-//                                       @NonNull CaptureRequest request,
-//                                       @NonNull TotalCaptureResult result) {
-//            //Toast.makeText(mActivity, "--onCaptureCompleted--", Toast.LENGTH_SHORT).show();
-//            try {
-//                process(result);
-//            } catch (CameraAccessException e) {
-//                throw new RuntimeException(e);
-//            }
-//        }
-//    };
+        /**
+         * 当相机捕获进度发生变化时进行调用
+         * 这个方法主要用于处理对焦过程中的回调信息
+         *
+         * @param session 正在进行捕获的相机捕获会话
+         * @param request 发出此捕获请求的请求对象
+         * @param partialResult 包含捕获进度部分结果的对象
+         */
+        @Override
+        public void onCaptureProgressed(@NonNull CameraCaptureSession session,
+                                        @NonNull CaptureRequest request,
+                                        @NonNull CaptureResult partialResult) {
+            Log.d("--onCaptureCompleted--", "--onCaptureProgressed--"+"捕获状态发生改变");
+            // 对焦回调
+            process(partialResult);
+        }
+        /**
+         * 当相机捕获完成时进行调用
+         * 这个方法主要用于处理捕获完成后的结果
+         *
+         * @param session 正在进行捕获的相机捕获会话
+         * @param request 发出此捕获请求的请求对象
+         * @param result 包含捕获结果的对象
+         */
+        @Override
+        public void onCaptureCompleted(@NonNull CameraCaptureSession session,
+                                       @NonNull CaptureRequest request,
+                                       @NonNull TotalCaptureResult result) {
+            process(result);
+            Log.d("--onCaptureCompleted--", "--onCaptureCompleted--: 捕获完成");
+        }
+    };
+
 
     // 开启后台线程
     private void startBackgroundThread() {
@@ -655,56 +647,22 @@ public class Camera2Proxy {
             }
         }
     }
-    // 选择合适的尺寸
-    public Size chooseOptimalSize(Size[] sizes, int dstSize, float aspectRatio) {
-        if (sizes == null || sizes.length <= 0) {
-            Log.e(TAG, "chooseOptimalSize failed, input sizes is empty");
-            return null;
-        }
-        int minDelta = Integer.MAX_VALUE; // 最小的差值，初始值应该设置大点保证之后的计算中会被重置
-        int index = 0; // 最小的差值对应的索引坐标
-        for (int i = 0; i < sizes.length; i++) {
-            Size size = sizes[i];
-            // 先判断比例是否相等
-            if (size.getWidth() * aspectRatio == size.getHeight()) {
-                int delta = Math.abs(dstSize - size.getHeight());
-                if (delta == 0) {
-                    return size;
-                }
-                if (minDelta > delta) {
-                    minDelta = delta;
-                    index = i;
-                }
-            }
-        }
-        return sizes[index];
-    }
-    // 取值范围
+    // 对焦区域坐标限制
     private int clamp(int x, int min, int max) {
         if (x > max) return max;
         if (x < min) return min;
         return x;
     }
 
-    public void setFlashMode(int flashModeTorch) {
-        mPreviewRequestBuilder= myapp.previewRequestBuilder;
-        mPreviewRequestBuilder.set(CaptureRequest.FLASH_MODE, flashModeTorch);
-    }
-
-    public int getFlashMode() {
-        return mPreviewRequestBuilder.get(CaptureRequest.FLASH_MODE);
-    }
-
-    // 比较器
+    // 获取最佳的尺寸
     static class CompareSizesByArea implements Comparator<Size> {
-
+            // 降序
         @Override
         public int compare(Size lhs, Size rhs) {
-            // 我们在这里投放，以确保乘法不会溢出
+            // We cast here to ensure the multiplications won't overflow
             return Long.signum((long) lhs.getWidth() * lhs.getHeight() -
                     (long) rhs.getWidth() * rhs.getHeight());
         }
-
     }
 
 }
