@@ -14,6 +14,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
@@ -87,6 +88,7 @@ import androidx.core.view.WindowInsetsCompat;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -528,10 +530,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
         // 获取屏幕宽高
         mDisplayMetrics = new DisplayMetrics();
-        getWindowManager().getDefaultDisplay().getMetrics(mDisplayMetrics);
-        screenWidth = mDisplayMetrics.widthPixels;
-        screenHeight = mDisplayMetrics.heightPixels;
-        Log.d("--Screen--", "width:" + screenWidth + " height:" + screenHeight);
+        getScreenWidthAndHeight();
+
         //相机操作
         surfaces = new ArrayList<>();
         // 创建Handler
@@ -578,6 +578,69 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
     }
 
+    private void getScreenWidthAndHeight() {
+        getWindowManager().getDefaultDisplay().getMetrics(mDisplayMetrics);
+        screenWidth = mDisplayMetrics.widthPixels;
+        screenHeight = (int)(mDisplayMetrics.heightPixels/10);
+        Log.d("--Screen--", "Screen width:" + screenHeight);
+        screenHeight=screenHeight*10;
+        Log.d("--Screen--", "width:" + screenWidth + " height:" + screenHeight);
+        // 获取状态栏高度
+        int statusBarHeight = getStatusBarHeight(this)/10;
+        statusBarHeight = statusBarHeight*10;
+        // 获取导航栏高度
+        int navigationBarHeight = getNavigationBarHeight(this);
+        // 计算实际显示区域的高度
+        screenHeight= screenHeight + statusBarHeight + navigationBarHeight;
+        Log.d("--Screen--", "Screen height:" + screenHeight+" Screen Width:"+screenWidth);
+    }
+
+
+    // 获取导航栏高度
+    private int getNavigationBarHeight(Context context) {
+        Resources resources = context.getResources();
+        int resourceId = resources.getIdentifier("navigation_bar_height", "dimen", "android");
+        if (resourceId > 0) {
+            return resources.getDimensionPixelSize(resourceId);
+        }
+
+        // 如果没有导航栏，则返回 0
+        boolean hasNavigationBar = checkDeviceHasNavigationBar(context);
+        return hasNavigationBar ? resources.getDimensionPixelSize(resourceId) : 0;
+    }
+
+    // 检查设备是否有导航栏
+    private boolean checkDeviceHasNavigationBar(Context context) {
+        boolean hasNavigationBar = false;
+        Resources resources = context.getResources();
+        int resourceId = resources.getIdentifier("config_showNavigationBar", "bool", "android");
+        if (resourceId != 0) {
+            hasNavigationBar = resources.getBoolean(resourceId);
+        }
+        try {
+            @SuppressLint("PrivateApi") Class systemPropertiesClass = Class.forName("android.os.SystemProperties");
+            Method method = systemPropertiesClass.getMethod("get", String.class);
+            String navBarOverride = (String) method.invoke(systemPropertiesClass, "qemu.hw.mainkeys");
+            if ("1".equals(navBarOverride)) {
+                hasNavigationBar = false;
+            } else if ("0".equals(navBarOverride)) {
+                hasNavigationBar = true;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return hasNavigationBar;
+    }
+
+    // 获取状态栏高度
+    private int getStatusBarHeight(Context context) {
+        int result = 0;
+        int resourceId = context.getResources().getIdentifier("status_bar_height", "dimen", "android");
+        if (resourceId > 0) {
+            result = context.getResources().getDimensionPixelSize(resourceId);
+        }
+        return result;
+    }
 
 
     public static CameraActivity getInstance() {
@@ -1500,6 +1563,41 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             e.printStackTrace();
         }
     }
+//    // 定义 CompareSizesByArea 类，用于比较尺寸的面积大小
+//    class CompareSizesByArea implements java.util.Comparator<Size> {
+//        @Override
+//        public int compare(Size o1, Size o2) {
+//            long area1 = (long) o1.getWidth() * o1.getHeight();
+//            long area2 = (long) o2.getWidth() * o2.getHeight();
+//            return Long.compare(area2, area1); // 降序排列
+//        }
+//    }
+// 筛选具有特定宽高比的尺寸（选择最接近的）
+private List<Size> filterSizesByAspectRatio(List<Size> sizes, double targetAspectRatio) {
+    List<Size> filteredSizes = new ArrayList<>();
+
+    // 初始化最小差值和最接近的尺寸
+    double minDifference = Double.MAX_VALUE;
+    Size closestSize = null;
+
+    for (Size size : sizes) {
+        double currentAspectRatio = (double) size.getWidth() / size.getHeight();
+        double difference = Math.abs(currentAspectRatio - targetAspectRatio);
+
+        // 如果当前尺寸的差值更小，则更新最小差值和最接近的尺寸
+        if (difference < minDifference) {
+            minDifference = difference;
+            closestSize = size;
+        }
+    }
+
+    // 如果找到了最接近的尺寸，则将其添加到结果列表中
+    if (closestSize != null) {
+        filteredSizes.add(closestSize);
+    }
+
+    return filteredSizes;
+}
 
     private void initAutoFitTextureView(AutoFitTextureView textureView, int width, int height) {
         // 确保 surfaces 集合已被初始化
@@ -1509,29 +1607,63 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             surfaces.clear();
         }
 
-
         CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
         try {
             // 获取指定摄像头的特性
             characteristics = manager.getCameraCharacteristics(cameraId);
             // 获取摄像头支持的配置属性
             StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+
             Log.d("--initAutoFitTextureView--", "map:" +map);
-            Toast.makeText(this, "map:" +map, Toast.LENGTH_SHORT).show();
+            //Toast.makeText(this, "map:" +map, Toast.LENGTH_SHORT).show();
             // 获取摄像头支持的最大尺寸
             assert map != null;
             // 获取支持的尺寸的最大尺寸
             Size largestmax = Collections.max(Arrays.asList(map.getOutputSizes(ImageFormat.JPEG)), new CompareSizesByArea());
+            ///////////////
+            // 获取支持的尺寸的最大尺寸
+            List<Size> outputSizes = Arrays.asList(map.getOutputSizes(ImageFormat.JPEG));
 
+    // 设置不同的宽高比
+            double aspectRatio1x1 = 1.0; // 1:1
+            double aspectRatio4x3 = 3.0 / 4.0; // 4:3
+    // 假设 FULL 是设备的最大输出尺寸比例
+           // Size fullSize = Collections.max(outputSizes, new CompareSizesByArea());
+            //获取屏幕尺寸
+
+           // double aspectRatioFull = (double) fullSize.getWidth() / fullSize.getHeight();
+            double aspectRatioFull = (double) (screenHeight / (double)screenWidth);
+            Log.d("--1initAutoFitTextureView--", "aspectRatioFull:"+aspectRatioFull+"screenHeight"+screenHeight+"screenWidth"+screenWidth);
+            // 分别获取 1:1、4:3 和 FULL 的最大尺寸
+            List<Size> sizes1x1 = filterSizesByAspectRatio(outputSizes, aspectRatio1x1);
+            List<Size> sizes4x3 = filterSizesByAspectRatio(outputSizes, aspectRatio4x3);
+            List<Size> sizesFull = filterSizesByAspectRatio(outputSizes, aspectRatioFull);
+
+            Log.d("--1initAutoFitTextureView--", "1sizesFull:"+sizesFull);
+
+            Size largest1x1 = sizes1x1.isEmpty() ? null : Collections.max(sizes1x1, new CompareSizesByArea());
+            Size largest4x3 = sizes4x3.isEmpty() ? null : Collections.max(sizes4x3, new CompareSizesByArea());
+            Size largestFull = sizesFull.isEmpty() ? null : Collections.max(sizesFull, new CompareSizesByArea());
+
+           // System.out.println("Largest 1:1 size: " + largest1x1);
+            //System.out.println("Largest 4:3 size: " + largest4x3);
+            //System.out.println("Largest FULL size: " + largestFull);
+            Log.d("--initAutoFitTextureView--", " largest1x1:" + largest1x1+"largest4x3:"+largestFull+" FULL:"+largestFull);
+            //////////////
             width = largest.getWidth();
             height = largest.getHeight();
             Log.d("--initAutoFitTextureView--", "width:" + width+" height:"+height);
-            previewSize = chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class), width, height, largest);
-            mImageReader = ImageReader.newInstance(largestmax.getWidth(), largestmax.getHeight(), ImageFormat.JPEG, 2);
+            previewSize = mCameraProxy.chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class), width, height, largest);
+            Log.d("--initAutoFitTextureView1--", "previewSize:width"+previewSize.getWidth()+" height:"+previewSize.getHeight());
+            if (largestFull != null) {
+                mImageReader = ImageReader.newInstance(largestFull.getWidth(), largestFull.getHeight(), ImageFormat.JPEG, 2);
+            }
             Log.d("--initAutoFitTextureView--", "previewSize:" + previewSize.getWidth()+" height:"+previewSize.getHeight());
             // 根据选中的预览尺寸来调整预览组件（TextureView的）的长宽比
             //previewSize=new Size(1600, 720);
             if(width==16&&isCapture) {
+              //  previewSize = mCameraProxy.chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class), width, height, largestFull);
+               Log.d("--initAutoFitTextureView--","previewSize"+previewSize.getWidth()+"height:"+previewSize.getHeight());
                 previewSize=new Size(1600, 720);
                 Log.d("--initAutoFitTextureView--", "isCapture");
             }
@@ -1722,21 +1854,25 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             // 返回面积第二小的尺寸
             {
                 Log.d("--chooseOptimalSize--", "1/1");
+                Log.d("--chooseOptimalSize--", "sortedSizes.size()：" + sortedSizes.get(3).getHeight()+":" + sortedSizes.get(0).getWidth());
                 return sortedSizes.get(3);
             }
             if(w==4)
             {
                 Log.d("--chooseOptimalSize--", "4/3");
+                Log.d("--chooseOptimalSize--", "sortedSizes.size()：" + sortedSizes.get(7).getHeight()+":" + sortedSizes.get(0).getWidth());
                 return sortedSizes.get(7);
             }
             if(w==16)
             {
                 Log.d("--chooseOptimalSize--", "16/9");
+                Log.d("--chooseOptimalSize--", "sortedSizes.size()：" + sortedSizes.get(0).getHeight()+":" + sortedSizes.get(0).getWidth());
                 return sortedSizes.get(0);
             }
             else
             {
                 Log.d("--chooseOptimalSize--", "1/1");
+                Log.d("--chooseOptimalSize--", "sortedSizes.size()：" + sortedSizes.get(0).getHeight()+":" + sortedSizes.get(0).getWidth());
                 return sortedSizes.get(0);
             }
         } else {

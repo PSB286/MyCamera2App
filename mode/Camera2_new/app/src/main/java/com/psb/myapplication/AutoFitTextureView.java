@@ -64,11 +64,15 @@ public class AutoFitTextureView extends TextureView
             // 则相应地调整高度或宽度，以保持宽高比的要求
             if (width < height * mRatioWidth / mRatioHeight)
             {
-                setMeasuredDimension(width, width * mRatioHeight / mRatioWidth);
+               // setMeasuredDimension(width, width * mRatioHeight / mRatioWidth);
+               // setMeasuredDimension(width, width * (1600/720));
+                setMeasuredDimension(1200, 500);
+                Log.d("--AutoFitTextureView-onMeasure-", "Setting1 aspect ratio: " + width + ":" + width * (1600/720));
             }
             else
             {
                 setMeasuredDimension(height * mRatioWidth / mRatioHeight, height);
+                Log.d("--AutoFitTextureView-onMeasure-", "Setting2 aspect ratio: " + height * mRatioWidth / mRatioHeight + ":" + height);
             }
         }
     }
