@@ -331,16 +331,16 @@ public class Camera2Proxy {
     // 选择合适的预览尺寸
     Size chooseOptimalSize(Size[] sizes, int viewWidth, int viewHeight, Size pictureSize) {
 
-//        // 1. 先找到与预览view的宽高比最接近的尺寸
-//        int totalRotation = getRotation();// 获取屏幕旋转角度
-//        // 2. 遍历所有尺寸，找到最接近的尺寸
-//        boolean swapRotation = totalRotation == 90 || totalRotation == 270;// 是否需要交换宽高
-//        // 3. 遍历所有尺寸，找到最接近的尺寸
-//        int width = swapRotation ? viewHeight : viewWidth;// 宽
-//        // 4. 遍历所有尺寸，找到最接近的尺寸
-//        int height = swapRotation ? viewWidth : viewHeight;// 高
+        // 1. 先找到与预览view的宽高比最接近的尺寸
+        int totalRotation = getRotation();// 获取屏幕旋转角度
+        // 2. 遍历所有尺寸，找到最接近的尺寸
+        boolean swapRotation = totalRotation == 90 || totalRotation == 270;// 是否需要交换宽高
+        // 3. 遍历所有尺寸，找到最接近的尺寸
+        int width = swapRotation ? viewHeight : viewWidth;// 宽
+        // 4. 遍历所有尺寸，找到最接近的尺寸
+        int height = swapRotation ? viewWidth : viewHeight;// 高
         // 5. 遍历所有尺寸，找到最接近的尺寸
-        return getSuitableSize(sizes, viewWidth, viewHeight, pictureSize);// 返回最接近的尺寸
+        return getSuitableSize(sizes, width, height, pictureSize);// 返回最接近的尺寸
     }
 
     // 获取旋转角度
@@ -376,7 +376,7 @@ public class Camera2Proxy {
         int index = 0; // 最小的差值对应的索引坐标
         // 先找到与预览view的宽高比最接近的尺寸
         float aspectRatio = pictureSize.getHeight() * 1.0f / pictureSize.getWidth();
-        Log.d("--getSuitableSize--", "getSuitableSize. aspectRatio: " + aspectRatio);
+        Log.d(TAG, "getSuitableSize. aspectRatio: " + aspectRatio);
         // 遍历所有尺寸，找到最接近的尺寸
         for (int i = 0; i < sizes.length; i++) {
             Size size = sizes[i];
