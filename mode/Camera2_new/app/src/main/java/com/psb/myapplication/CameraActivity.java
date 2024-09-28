@@ -428,9 +428,11 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             if(bitmap==null)
             {
                 mPictureIv.setImageResource(R.drawable.empty);
+                mPictureIv.setEnabled(false);
             }
             else {
                 mPictureIv.setImageBitmap(bitmap);
+                mPictureIv.setEnabled(true);
             }
             isClickBitmap = false;
         }
@@ -452,6 +454,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 //录像结束声音
                 mMediaActionSound.play(MediaActionSound.STOP_VIDEO_RECORDING);
                 mPictureIv.setImageBitmap(getLatestThumbBitmap(this));
+                mPictureIv.setEnabled(true);
                 record.setScaleX(1f);
                 record.setScaleY(1f);
             } catch (CameraAccessException e) {
@@ -559,9 +562,11 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         if(bitmap==null)
         {
            mPictureIv.setImageResource(R.drawable.empty);
+           mPictureIv.setEnabled(false);
         }
         else {
             mPictureIv.setImageBitmap(bitmap);
+            mPictureIv.setEnabled(true);
         }
         // 初始化焦点光圈
         focusSunView = findViewById(R.id.focus_sun_view);
@@ -664,6 +669,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                         }
 
                        mPictureIv.setImageBitmap(bitmap);
+                        mPictureIv.setEnabled(true);
                        // ImageUtils.setLatestThumbBitmapAsync(mPictureIv, CameraActivity.this);
                     } catch (CameraAccessException e) {
                         throw new RuntimeException(e);
@@ -1020,7 +1026,6 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         if (zoomRect != null) {
             recordRequestBuilder.set(CaptureRequest.SCALER_CROP_REGION, zoomRect);
         }
-
         // 将预览Surface添加到预览请求中
         recordRequestBuilder.addTarget(previewSurface); // 保留预览Surface
         // 设置自动对焦和自动曝光模式
@@ -1994,6 +1999,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         saveImageToGallery(data);
         // 开启异步任务来解码和显示图片
         new DecodeAndDisplayTask().execute(data, image);
+        mPictureIv.setEnabled(true);
         image.close();
         //mPictureIv.setImageBitmap(ImageUtils.rotateBitmap(BitmapFactory.decodeByteArray(data, 0, data.length), 90, false, false));
         //Bitmap bitmap=getLatestThumbBitmap(this);
@@ -2052,7 +2058,6 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 bitmap = rotateBitmap(bitmap, 180, false, false);
                 isinversion = false;
             }
-
             return bitmap;
         }
 
@@ -2074,6 +2079,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         protected void onPostExecute(Bitmap bitmap) {
             if (bitmap != null) {
                 mPictureIv.setImageBitmap(bitmap);
+                mPictureIv.setEnabled(true);
             } else {
                 Log.w("onPostExecute", "Bitmap is null.");
             }
