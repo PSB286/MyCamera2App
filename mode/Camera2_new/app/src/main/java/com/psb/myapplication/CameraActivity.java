@@ -122,6 +122,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     private CameraDevice mCameraDevice = null;
     SurfaceTexture texture;
     private Handler handler;
+    private Handler handler2;
+    private boolean Handleding=true;
     private ImageReader mImageReader;
     private MediaRecorder mMediaRecorder;
     private CameraCaptureSession captureSession;
@@ -161,7 +163,9 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     boolean isRightTransverse=false;
     boolean isLeftTransverse=false;
     boolean isinversion=false;
+    View maskView;
     CameraCaptureSession.StateCallback PreCaptureCallback;
+    private ValueAnimator currentAnimator;
     // 初始化 SensorManager 和传感器监听器
     private SensorManager sensorManager;
     private SensorEventListener sensorEventListener = new SensorEventListener() {
@@ -551,8 +555,10 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         Log.d("--Screen--", "width:" + screenWidth + " height:" + screenHeight);
         //相机操作
         surfaces = new ArrayList<>();
-        // 创建Handler
+        // UI线程的Handler
         handler = new Handler(Looper.getMainLooper());
+        handler2= new Handler(Looper.getMainLooper());
+
         mCameraProxy = new Camera2Proxy(this);
         // 显示最近
         mPictureIv = findViewById(R.id.picture_iv);
@@ -664,6 +670,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                             bitmap = rotateBitmap(bitmap, 180, false, false);
                             isinversion = false;
                         }
+
                        mPictureIv.setImageBitmap(bitmap);
                        // ImageUtils.setLatestThumbBitmapAsync(mPictureIv, CameraActivity.this);
                     } catch (CameraAccessException e) {
@@ -678,6 +685,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             if (v.getId() == R.id.switch_camera) {
                 //Toast.makeText(CameraActivity.this, "点击了切换摄像头按钮", Toast.LENGTH_SHORT).show();
                 isSwichCamera=true;
+                switch_camera.setEnabled(false);
                 switchCameraWithMaskAnimation();
                 //SwichCamera();
             }
@@ -1081,9 +1089,11 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
     @SuppressLint("CutPasteId")
     private void switchCameraWithMaskAnimation() {
+        // 确保没有正在进行的动画
+        cancelCurrentAnimator();
         if (mCameraDevice != null) {
             // 创建一个蒙版视图
-            View maskView = new View(this);
+            maskView = new View(this);
             maskView.setBackgroundColor(Color.BLACK); // 设置背景色为黑色
             maskView.setAlpha(0f); // 初始透明度为0
               int  width = findViewById(R.id.container).getWidth();
@@ -1104,6 +1114,10 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             // 添加动画效果
             ValueAnimator animator = ValueAnimator.ofFloat(0f, 1f);
             animator.setDuration(150); // 动画持续时间
+            if(isLayoutSwich)
+            {
+                animator.setDuration(600); // 动画持续时间
+            }
             animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
                 @Override
                 public void onAnimationUpdate(ValueAnimator animation) {
@@ -1112,11 +1126,15 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 }
             });
 
+
+
             animator.start();
+            currentAnimator = animator;
             // 在动画结束后关闭相机
             animator.addListener(new AnimatorListenerAdapter() {
                 @Override
                 public void onAnimationEnd(Animator animation) {
+
                     if(isSwichCamera) {
                         SwichCamera(maskView);
                     }
@@ -1132,20 +1150,28 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                     {
                         RecordLoading(maskView);
                     }
-                    if(isCaptureingflg)
-                    {
-                        CaptureLoading(maskView);
+                    if (isCaptureingflg) {
+                        // 恢复初始状态
+                        maskView.setAlpha(0f);
+                        parent.removeView(maskView); // 移除蒙版视图
+                        //CaptureLoading(maskView);
                     }
                 }
             });
         }
     }
 
+    private void cancelCurrentAnimator() {
+        if (currentAnimator != null && currentAnimator.isRunning()) {
+            currentAnimator.cancel();
+            currentAnimator = null;
+        }
+    }
+    int i=0;
+    int x=0;
     private void CaptureLoading(View maskView) {
         isCaptureingflg=false;
         // 开启一个新的线程实现移除蒙版，并且延迟600毫秒，等待摄像头切换成功
-        // 创建 Handler
-        Handler handler = new Handler();
         // 创建 Runnable
         Runnable removeMaskRunnable = new Runnable() {
             @Override
@@ -1153,18 +1179,22 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 ViewGroup parent = (ViewGroup) mTextureView.getParent();
                 parent.removeView(maskView); // 移除蒙版视图
                 Load.setVisibility(View.GONE);
+                Handleding =true;
+                Log.d("CaptureLoading", "x:" + x);
             }
         };
+        if(Handleding) {
+            Handleding = false;
+            // 执行延迟任务
+            handler2.postDelayed(removeMaskRunnable, 1); // 延迟 870 毫秒
+            Log.d("CaptureLoading", "i:" + i);
+        }
 
-        // 执行延迟任务
-        handler.postDelayed(removeMaskRunnable, 1); // 延迟 870 毫秒
     }
 
     private void RecordLoading(View maskView)  {
         isLayoutSwich=false;
         // 开启一个新的线程实现移除蒙版，并且延迟600毫秒，等待摄像头切换成功
-        // 创建 Handler
-        Handler handler = new Handler();
         // 创建 Runnable
         Runnable removeMaskRunnable = new Runnable() {
             @Override
@@ -1176,7 +1206,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         };
 
         // 执行延迟任务
-        handler.postDelayed(removeMaskRunnable, 600); // 延迟 870 毫秒
+        handler2.postDelayed(removeMaskRunnable, 600); // 延迟 870 毫秒
     }
 
     private void Swichlayout(final View maskView) {
@@ -1184,37 +1214,36 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         isLayoutSwich=false;
         // 开启一个新的线程实现移除蒙版，并且延迟600毫秒，等待摄像头切换成功
         // 创建 Handler
-        Handler handler = new Handler();
         // 创建 Runnable
         Runnable removeMaskRunnable = new Runnable() {
             @Override
             public void run() {
                 ViewGroup parent = (ViewGroup) mTextureView.getParent();
+                maskView.setAlpha(0f);
                 parent.removeView(maskView); // 移除蒙版视图
             }
         };
 
         // 执行延迟任务
-        handler.postDelayed(removeMaskRunnable, 600); // 延迟 870 毫秒
+        handler2.postDelayed(removeMaskRunnable, 600); // 延迟 870 毫秒
     }
 
     private void SwitchFrame(final View maskView) {
         openCamera(mTextureView.getWidth(), mTextureView.getHeight());
         isOption=false;
         // 开启一个新的线程实现移除蒙版，并且延迟600毫秒，等待摄像头切换成功
-        // 创建 Handler
-        Handler handler = new Handler();
         // 创建 Runnable
         Runnable removeMaskRunnable = new Runnable() {
             @Override
             public void run() {
                 ViewGroup parent = (ViewGroup) mTextureView.getParent();
+                maskView.setAlpha(0f);
                 parent.removeView(maskView); // 移除蒙版视图
             }
         };
 
         // 执行延迟任务
-        handler.postDelayed(removeMaskRunnable, 600); // 延迟 870 毫秒
+        handler2.postDelayed(removeMaskRunnable, 600); // 延迟 870 毫秒
     }
 
     private void SwichCamera(final View maskView) {
@@ -1237,20 +1266,22 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         }
         isSwichCamera=false;
 
-        // 开启一个新的线程实现移除蒙版，并且延迟600毫秒，等待摄像头切换成功
-        // 创建 Handler
-        Handler handler = new Handler();
         // 创建 Runnable
         Runnable removeMaskRunnable = new Runnable() {
             @Override
             public void run() {
                 ViewGroup parent = (ViewGroup) mTextureView.getParent();
+                maskView.setAlpha(0f);
                 parent.removeView(maskView); // 移除蒙版视图
+                switch_camera.setEnabled(true);
+                Handleding = true;
             }
         };
-
-        // 执行延迟任务
-        handler.postDelayed(removeMaskRunnable, 870); // 延迟 870 毫秒
+        if(Handleding) {
+            Handleding = false;
+            // 执行延迟任务
+            handler2.postDelayed(removeMaskRunnable, 870); // 延迟 870 毫秒
+        }
     }
 
     private void closeCamera() {
@@ -1289,6 +1320,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                    captureBuilder.set(CaptureRequest.SCALER_CROP_REGION, zoomRect);
                }
            }
+            // 停止连续取景
+           // captureSession.stopRepeating();
             // 获取设备方向
             int rotation = getWindowManager().getDefaultDisplay().getRotation();
             //int rotation=getRotationDegrees();
@@ -1301,13 +1334,11 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, rotation+90);
             // 捕获一帧图像
             captureSession.capture(captureBuilder.build(), null, null);
-
+            startPreview();
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
     }
-
-
 
 
     /*
