@@ -36,7 +36,6 @@ import android.hardware.camera2.CameraMetadata;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
 import android.hardware.camera2.TotalCaptureResult;
-import android.hardware.camera2.params.MeteringRectangle;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
@@ -45,31 +44,24 @@ import android.media.MediaRecorder;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.AsyncTask;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
-import android.provider.MediaStore;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.Size;
 import android.util.SparseIntArray;
-import android.util.TypedValue;
 import android.view.GestureDetector;
-import android.view.Gravity;
-import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.WindowManager;
 import android.view.animation.AccelerateDecelerateInterpolator;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.FrameLayout;
-import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.PopupWindow;
@@ -986,10 +978,12 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             captureSession.close();
             captureSession = null;
         }
-        isRecording = false;
-        isRecordingflg=false;
         // 清空 surfaces 集合
         surfaces.clear();
+
+        isRecording = false;
+        isRecordingflg=false;
+
        // mCameraProxy.mZoom=0;
         timerText.setVisibility(View.GONE);
         switch_camera.setVisibility(View.VISIBLE);
@@ -1013,31 +1007,34 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         createCaptureSession(mCameraDevice);
     }
 
+    private void startRecordingVideoinit() throws CameraAccessException {
+        // 更新预览请求
+        CaptureRequest.Builder recordRequestBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_RECORD);
+        recordRequestBuilder.addTarget(mMediaRecorder.getSurface());
+        // 创建一个预览Surface
+        texture.setDefaultBufferSize(previewSize.getWidth(), previewSize.getHeight());
+        //
+        Surface previewSurface = new Surface(texture);
+        Rect zoomRect = previewRequestBuilder.get(CaptureRequest.SCALER_CROP_REGION);
+        // 设置预览输出的Surface
+        if (zoomRect != null) {
+            recordRequestBuilder.set(CaptureRequest.SCALER_CROP_REGION, zoomRect);
+        }
+
+        // 将预览Surface添加到预览请求中
+        recordRequestBuilder.addTarget(previewSurface); // 保留预览Surface
+        // 设置自动对焦和自动曝光模式
+        recordRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_VIDEO);
+        // 设置自动曝光模式
+        recordRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
+        // 更新捕获会话
+        captureSession.setRepeatingRequest(recordRequestBuilder.build(), null, null);
+    }
     private void startRecordingVideo() {
         try {
+
+            startRecordingVideoinit();
             mMediaRecorder.start();
-            // 更新预览请求
-            CaptureRequest.Builder recordRequestBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_RECORD);
-            recordRequestBuilder.addTarget(mMediaRecorder.getSurface());
-            // 创建一个预览Surface
-            texture.setDefaultBufferSize(previewSize.getWidth(), previewSize.getHeight());
-            //
-            Surface previewSurface = new Surface(texture);
-            Rect zoomRect = previewRequestBuilder.get(CaptureRequest.SCALER_CROP_REGION);
-            // 设置预览输出的Surface
-            if (zoomRect != null) {
-                recordRequestBuilder.set(CaptureRequest.SCALER_CROP_REGION, zoomRect);
-            }
-
-            // 将预览Surface添加到预览请求中
-            recordRequestBuilder.addTarget(previewSurface); // 保留预览Surface
-            // 设置自动对焦和自动曝光模式
-            recordRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_VIDEO);
-            // 设置自动曝光模式
-            recordRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
-            // 更新捕获会话
-            captureSession.setRepeatingRequest(recordRequestBuilder.build(), null, null);
-
             isRecording = true;
 
             // private ImageView record, switch_camera, capture,mPictureIv,falsh_switch;
@@ -1211,7 +1208,11 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
     private void Swichlayout(final View maskView) {
         openCamera(mTextureView.getWidth(), mTextureView.getHeight());
+
         isLayoutSwich=false;
+        // 重新创建预览会话
+        createCaptureSessionAsync();
+
         // 开启一个新的线程实现移除蒙版，并且延迟600毫秒，等待摄像头切换成功
         // 创建 Handler
         // 创建 Runnable
@@ -1496,6 +1497,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
      */
     //打开相机
     private void openCamera(int width, int height) {
+
         initAutoFitTextureView(mTextureView, mTextureView.getWidth(), mTextureView.getHeight());
         stopCaptureSessionAsync();
         //Toast.makeText(this, "打开摄像头", Toast.LENGTH_SHORT).show();
@@ -1867,6 +1869,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     }
 
     private void createCaptureSession(CameraDevice cameraDevice) throws CameraAccessException {
+
         // 预览Surface
         texture = mTextureView.getSurfaceTexture();
         assert texture != null;
@@ -2080,6 +2083,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     private void initRecording() {
 
         String recorderPath = null;
+
         // 检查上次生成的文件是否存在，并检查其大小
         if (Previous_recorderPath != null) {
             // 获取上次生成的文件
@@ -2103,6 +2107,11 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             String fileName = "VID_" + System.currentTimeMillis() + ".mp4";
             recorderPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).getAbsolutePath() + File.separator + fileName;
             //currentPath=recorderPath;
+        }
+        if(mMediaRecorder!=null) {
+            mMediaRecorder.reset();
+            mMediaRecorder.release();
+            mMediaRecorder = null;
         }
 
         Previous_recorderPath = recorderPath;
