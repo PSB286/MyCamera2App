@@ -1,6 +1,7 @@
 package com.psb.myapplication;
 
 import static com.psb.myapplication.ImageUtils.getLatestThumbBitmap;
+import static com.psb.myapplication.ImageUtils.rotateBitmap;
 
 import static java.lang.Thread.sleep;
 
@@ -97,7 +98,7 @@ import java.util.Objects;
 
 public class CameraActivity extends AppCompatActivity implements View.OnTouchListener {
 
-    private static CameraActivity myapp;
+    private static CameraActivity myapp = null;
     private static final int DISTANCE_LIMIT = 50; // 距离阈值
     private static final int VELOCITY_THRESHOLD = 500; // 速度阈值;
 
@@ -157,6 +158,9 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     boolean isStopRecord=false;
     boolean isCaptureingflg =false;
     boolean isClickBitmap = false;
+    boolean isRightTransverse=false;
+    boolean isLeftTransverse=false;
+    boolean isinversion=false;
     CameraCaptureSession.StateCallback PreCaptureCallback;
     // 初始化 SensorManager 和传感器监听器
     private SensorManager sensorManager;
@@ -199,6 +203,9 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 falsh_switch.setRotation(0);
                 mCustomViewL.textViews.get(0).setRotation(0);
                 mCustomViewL.textViews.get(1).setRotation(0);
+                isinversion = false;
+                isRightTransverse = false;
+                isLeftTransverse = false;
             }
             if(pitch<=5&&roll>=20)
             {
@@ -214,6 +221,9 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 falsh_switch.setRotation(90);
                 mCustomViewL.textViews.get(0).setRotation(90);
                 mCustomViewL.textViews.get(1).setRotation(90);
+                isLeftTransverse = true;
+                isinversion = false;
+                isRightTransverse = false;
             }
             if(pitch<=50&&roll<=-30)
             {
@@ -229,6 +239,9 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 falsh_switch.setRotation(-90);
                 mCustomViewL.textViews.get(0).setRotation(-90);
                 mCustomViewL.textViews.get(1).setRotation(-90);
+                isRightTransverse = true;
+                isinversion = false;
+                isLeftTransverse = false;
             }
             if(roll>=-76&&roll<=76&&pitch>30)
             {
@@ -244,7 +257,9 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 falsh_switch.setRotation(180);
                 mCustomViewL.textViews.get(0).setRotation(180);
                 mCustomViewL.textViews.get(1).setRotation(180);
-
+                isinversion=true;
+                isRightTransverse = false;
+                isLeftTransverse = false;
             }
             // 创建一个旋转动画
             ObjectAnimator rotationAnimator = ObjectAnimator.ofFloat(mPictureIv, "rotation", 90);
@@ -413,6 +428,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         if(isClickBitmap)
         {
             Bitmap bitmap=getLatestThumbBitmap(this);
+            myapp=this;
             if(bitmap==null)
             {
                 mPictureIv.setImageResource(R.drawable.empty);
@@ -581,9 +597,9 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
 
 
-    public static CameraActivity getInstance() {
-        return myapp;
-    }
+//    public static CameraActivity getInstance() {
+//        return myapp;
+//    }
 
 
     // 初始化自定义View
@@ -599,12 +615,12 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     private void initRequestPermissions() {
         // 申请摄像头权限
         requestPermissions(new String[]{
-                android.Manifest.permission.CAMERA,
-                android.Manifest.permission.RECORD_AUDIO,
-                android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                android.Manifest.permission.READ_EXTERNAL_STORAGE,
-                android.Manifest.permission.RECORD_AUDIO,
-                android.Manifest.permission.MODIFY_AUDIO_SETTINGS
+                Manifest.permission.CAMERA,
+                Manifest.permission.RECORD_AUDIO,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+                Manifest.permission.RECORD_AUDIO,
+                Manifest.permission.MODIFY_AUDIO_SETTINGS
         }, 0x123);
 
     }
@@ -631,7 +647,24 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                         stopRecordingVideo();
                         //录像结束声音
                         mMediaActionSound.play(MediaActionSound.STOP_VIDEO_RECORDING);
-                       mPictureIv.setImageBitmap(getLatestThumbBitmap(this));
+                        Bitmap bitmap = getLatestThumbBitmap(this);
+                        if(isLeftTransverse) {
+                            // 旋转图片（如果需要）
+                            bitmap = rotateBitmap(bitmap, -90, false, false);
+                            isLeftTransverse = false;
+                        }
+                        if(isRightTransverse)
+                        {
+                            bitmap = rotateBitmap(bitmap, 90, false, false);
+                            isLeftTransverse = false;
+                        }
+                        if(isinversion)
+                        {
+                            // 旋转图片（如果需要）
+                            bitmap = rotateBitmap(bitmap, 180, false, false);
+                            isinversion = false;
+                        }
+                       mPictureIv.setImageBitmap(bitmap);
                        // ImageUtils.setLatestThumbBitmapAsync(mPictureIv, CameraActivity.this);
                     } catch (CameraAccessException e) {
                         throw new RuntimeException(e);
@@ -656,8 +689,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
               //  Toast.makeText(CameraActivity.this, "点击了拍照按钮", Toast.LENGTH_SHORT).show();
                 isCaptureingflg =true;
                 switchCameraWithMaskAnimation();
+                Log.d("--1CameraActivity--", "123");
                 takePicture();
-                setLatestThumbBitmapAsync(mPictureIv, this);
                 mMediaActionSound.play(MediaActionSound.SHUTTER_CLICK); // 播放拍照声音
                // stopPreview();
             }
@@ -684,6 +717,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         mPictureIv.setOnClickListener(v -> {
             if (v.getId() == R.id.picture_iv) {
                 isClickBitmap=true;
+                getLatestThumbBitmap(this);
                 // 创建意图并启动
                 Intent intent = new Intent(Intent.ACTION_VIEW);
                 intent.setDataAndType(ImageUtils.imageUri, "image/*");
@@ -839,34 +873,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         );
     }
 
-    public static void setLatestThumbBitmapAsync(final ImageView imageView, final Context context) {
-        // 创建一个 Handler，用于在主线程中更新 UI
-        final Handler handler = new Handler(Looper.getMainLooper());
 
-        // 创建一个新的 Runnable，用于异步加载 Bitmap 并更新 UI
-        Runnable runnable = new Runnable() {
-            @Override
-            public void run() {
-                // 在子线程中执行耗时操作
-                try {
-                    sleep(600);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
-                Bitmap bitmap = getLatestThumbBitmap(context);
-                // 使用 post 方法在主线程中更新 ImageView
-                handler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        imageView.setImageBitmap(bitmap);
-                    }
-                });
-            }
-        };
-
-        // 启动新线程执行 Runnable
-        new Thread(runnable).start();
-    }
 
     // 切换帧
     private void SwichFrame() {
@@ -1218,10 +1225,15 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         closeCamera();
         openCamera(mTextureView.getWidth(), mTextureView.getHeight());
 
-        if ("1".equals(cameraId)) {
+        if(!isLayout) {
+            if ("1".equals(cameraId)) {
+                falsh_switch.setVisibility(View.GONE);
+            } else {
+                falsh_switch.setVisibility(View.VISIBLE);
+            }
+        }
+        else {
             falsh_switch.setVisibility(View.GONE);
-        } else {
-            falsh_switch.setVisibility(View.VISIBLE);
         }
         isSwichCamera=false;
 
@@ -1248,29 +1260,6 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         }
     }
 
-
-    // 异步保存图片
-    private class ImageSaveTask extends AsyncTask<Image, Void, Bitmap> {
-        // 执行耗时操作
-        @Override
-        protected Bitmap doInBackground(Image... images) {
-            ByteBuffer buffer = images[0].getPlanes()[0].getBuffer();
-            byte[] bytes = new byte[buffer.remaining()];
-            buffer.get(bytes);
-            if (mCameraProxy.isFrontCamera()) {
-                Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
-                // 前置摄像头需要左右镜像
-                Bitmap rotateBitmap = ImageUtils.rotateBitmap(bitmap, 0, true, true);
-                ImageUtils.saveBitmap(rotateBitmap);
-                rotateBitmap.recycle();
-            } else {
-                ImageUtils.saveImage(bytes);
-            }
-            images[0].close();
-            return getLatestThumbBitmap(getInstance());
-        }
-    }
-
     // 方向
     private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
 
@@ -1280,33 +1269,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         ORIENTATIONS.append(Surface.ROTATION_180, 270);
         ORIENTATIONS.append(Surface.ROTATION_270, 180);
     }
-
     // 拍照
-    private void takePicture(ImageReader.OnImageAvailableListener onImageAvailableListener) {
-        try {
-
-            mImageReader.setOnImageAvailableListener(onImageAvailableListener, null);
-            // 创建捕获请求
-            CaptureRequest.Builder captureBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
-            // 设置预览输出的Surface
-            captureBuilder.addTarget(mImageReader.getSurface());
-            // 设置自动对焦模式
-            captureBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
-            // 自动对焦
-            captureBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_AUTO);
-            // 自动曝光
-            captureBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
-            // 设置照片的方向
-            int rotation = getWindowManager().getDefaultDisplay().getRotation();
-            // 根据设备方向计算设置照片的方向
-            captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, ORIENTATIONS.get(rotation));
-            // 捕获一帧图像
-            captureSession.capture(captureBuilder.build(), null, null);
-        } catch (CameraAccessException e) {
-            e.printStackTrace();
-        }
-    }
-
     private void takePicture() {
         try {
             if (mFlashMode == 2) {
@@ -1460,6 +1423,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             isLayoutSwich=true;
             mCameraProxy.mZoom=0;
             mFlashMode = 2;
+            isLayout=false;
             SwichFlash();
             switchCameraWithMaskAnimation();
         }
@@ -1881,7 +1845,6 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         surfaces.add(previewSurface);
 
         // 创建ImageReader对象(拍照)
-        //mImageReader = ImageReader.newInstance(previewSize.getWidth(), previewSize.getHeight(), ImageFormat.JPEG, 1);
         mImageReader.setOnImageAvailableListener(mImageReaderListener, null);
         surfaces.add(mImageReader.getSurface());
 
@@ -1995,7 +1958,12 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         byte[] data = new byte[buffer.remaining()];
         buffer.get(data);
         saveImageToGallery(data);
+        // 开启异步任务来解码和显示图片
+        new DecodeAndDisplayTask().execute(data, image);
         image.close();
+        //mPictureIv.setImageBitmap(ImageUtils.rotateBitmap(BitmapFactory.decodeByteArray(data, 0, data.length), 90, false, false));
+        //Bitmap bitmap=getLatestThumbBitmap(this);
+
     };
 
     private void saveImageToGallery(byte[] data) {
@@ -2015,6 +1983,66 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(new File(filePath))));
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+
+    // 解码图片并显示
+    private class DecodeAndDisplayTask extends AsyncTask<Object, Void, Bitmap> {
+        private Image mImage;
+
+        @Override
+        protected Bitmap doInBackground(Object... params) {
+            byte[] data = (byte[]) params[0];
+            mImage = (Image) params[1];
+
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            // 图片压缩
+            options.inSampleSize = 2; // 指定采样率
+
+            // 获取图片数据
+            Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length, options);
+
+            if(isLeftTransverse) {
+                // 旋转图片（如果需要）
+                bitmap = rotateBitmap(bitmap, -90, false, false);
+                isLeftTransverse = false;
+            }
+            if(isRightTransverse)
+            {
+                bitmap = rotateBitmap(bitmap, 90, false, false);
+                isLeftTransverse = false;
+            }
+            if(isinversion)
+            {
+                // 旋转图片（如果需要）
+                bitmap = rotateBitmap(bitmap, 180, false, false);
+                isinversion = false;
+            }
+
+            return bitmap;
+        }
+
+
+        // 旋转图片
+        private Bitmap rotateBitmap(Bitmap bitmap, int angle, boolean flipHorizontal, boolean flipVertical) {
+            Matrix matrix = new Matrix();
+            matrix.postRotate(angle);
+            if (flipHorizontal) {
+                matrix.postScale(-1, 1);
+            }
+            if (flipVertical) {
+                matrix.postScale(1, -1);
+            }
+            return Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+        }
+
+        @Override
+        protected void onPostExecute(Bitmap bitmap) {
+            if (bitmap != null) {
+                mPictureIv.setImageBitmap(bitmap);
+            } else {
+                Log.w("onPostExecute", "Bitmap is null.");
+            }
         }
     }
 

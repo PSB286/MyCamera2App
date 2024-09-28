@@ -24,7 +24,7 @@ public class ImageUtils {
     private static final String TAG = "ImageUtils";
     @SuppressLint("StaticFieldLeak")
     private static Context sContext = MyApp.getInstance();
-    private static final CameraActivity myApp=CameraActivity.getInstance();
+    //private static final CameraActivity myApp=CameraActivity.getInstance();
     static Uri imageUri= null;
     private static final String GALLERY_PATH = Environment.getExternalStoragePublicDirectory(Environment
             .DIRECTORY_DCIM) + File.separator + "Camera";
@@ -78,9 +78,13 @@ public class ImageUtils {
     }
 
     public static void saveBitmap(Bitmap bitmap) {
+        // 保存图片
         String fileName = DATE_FORMAT.format(new Date(System.currentTimeMillis())) + ".jpg";
+        // 保存路径
         File outFile = new File(GALLERY_PATH, fileName);
+        // 保存文件
         Log.d(TAG, "saveImage. filepath: " + outFile.getAbsolutePath());
+        // 创建文件输出流
         FileOutputStream os = null;
         try {
             os = new FileOutputStream(outFile);
