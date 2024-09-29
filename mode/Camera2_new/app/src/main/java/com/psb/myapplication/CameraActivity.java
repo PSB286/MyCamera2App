@@ -683,9 +683,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                     startRecordingVideo();
                 } else {
                     try {
-                      //  Toast.makeText(CameraActivity.this, "停止录像按钮", Toast.LENGTH_SHORT).show();
-                        isStopRecord=true;
-                        switchCameraWithMaskAnimation();
+                       // isStopRecord=true;
+                       // switchCameraWithMaskAnimation();
                         stopRecordingVideo();
                         //录像结束声音
                         mMediaActionSound.play(MediaActionSound.STOP_VIDEO_RECORDING);
@@ -1206,7 +1205,6 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                     }
                     if(isStopRecord)
                     {
-                        isStopRecord=false;
                         RecordLoading(maskView);
                     }
                     if (isCaptureingflg) {
@@ -1231,7 +1229,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     }
 
     private void RecordLoading(View maskView)  {
-        isLayoutSwich=false;
+        isStopRecord=false;
+        Load.setAlpha(1f);
         Load.setVisibility(View.VISIBLE);
         Load.startAnimation(LoadAnimation); //拍照按钮动画
         // 开启一个新的线程实现移除蒙版，并且延迟600毫秒，等待摄像头切换成功
@@ -1249,13 +1248,11 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         };
 
         // 执行延迟任务
-        handler2.postDelayed(removeMaskRunnable, 600); // 延迟 870 毫秒
+        handler2.postDelayed(removeMaskRunnable, 800); // 延迟 870 毫秒
     }
 
     private void Swichlayout(final View maskView) {
         openCamera(mTextureView.getWidth(), mTextureView.getHeight());
-        // 重新创建预览会话
-        createCaptureSessionAsync();
 
         // 开启一个新的线程实现移除蒙版，并且延迟600毫秒，等待摄像头切换成功
         // 创建 Handler
@@ -2196,7 +2193,15 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         // 设置视频帧率为30帧/秒，以保证视频流畅性
         mMediaRecorder.setVideoFrameRate(30);
         // 根据相机预览尺寸设置视频分辨率
-        mMediaRecorder.setVideoSize(previewSize.getWidth(), previewSize.getHeight());
+
+        if(largest.getWidth()==4)
+        {
+            mMediaRecorder.setVideoSize(1280,960);
+        }
+        else
+        {
+            mMediaRecorder.setVideoSize(1600, 720);
+        }
         // 设置视频编码格式为H.264，提供较好的压缩效率
         mMediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
         // 设置音频编码格式为AAC，提供较好的音频质量
