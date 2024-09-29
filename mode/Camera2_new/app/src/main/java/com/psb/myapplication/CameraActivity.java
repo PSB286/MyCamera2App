@@ -573,7 +573,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         // 初始化焦点光圈
         focusSunView = findViewById(R.id.focus_sun_view);
         // 设置曝光范围
-        focusSunView.setExposureLimit(2.0f, -2.0f);
+        focusSunView.setExposureLimit(0.5f, -0.5f);
 
         Previous_recorderPath = null;
         newroidPath = null;
@@ -2257,6 +2257,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     }
 
     private void applyExposure(float exposure) {
+        //exposure=exposure-50;
+        exposure=exposure%200-50;
         Log.d("applyExposure", "applyExposure: " + exposure);
         if (previewRequestBuilder != null) {
             try {
