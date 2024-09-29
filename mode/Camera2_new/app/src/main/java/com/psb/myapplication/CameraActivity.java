@@ -1322,6 +1322,14 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     private void SwitchFrame(final View maskView) {
         openCamera(mTextureView.getWidth(), mTextureView.getHeight());
         isOption=false;
+        switch_camera.setEnabled(false);
+        record.setEnabled(false);
+        mCustomViewL.setEnabled(false);
+        mPictureIv.setEnabled(false);
+        capture.setEnabled(false);
+        mCustomViewL.textViews.get(0).setEnabled(false);
+        mCustomViewL.textViews.get(1).setEnabled(false);
+
         // 开启一个新的线程实现移除蒙版，并且延迟600毫秒，等待摄像头切换成功
         // 创建 Runnable
         Runnable removeMaskRunnable = new Runnable() {
@@ -1330,6 +1338,13 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 ViewGroup parent = (ViewGroup) mTextureView.getParent();
                 maskView.setAlpha(0f);
                 parent.removeView(maskView); // 移除蒙版视图
+                switch_camera.setEnabled(true);
+                mCustomViewL.setEnabled(true);
+                mPictureIv.setEnabled(true);
+                capture.setEnabled(true);
+                record.setEnabled(true);
+                mCustomViewL.textViews.get(0).setEnabled(true);
+                mCustomViewL.textViews.get(1).setEnabled(true);
             }
         };
 
