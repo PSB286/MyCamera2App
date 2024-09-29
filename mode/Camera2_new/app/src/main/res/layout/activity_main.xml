@@ -29,15 +29,20 @@
         android:visibility="invisible"
         app:layout_constraintStart_toStartOf="@+id/preview_view"
         app:layout_constraintTop_toTopOf="@+id/preview_view" />
-
-    <com.psb.myapplication.CustomViewL
-        android:id="@+id/mCustomView"
+    <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="161dp"
-        android:layout_marginStart="0dp"
-        android:layout_marginTop="580dp"
-        android:background="#00000000"
-        android:orientation="horizontal" />s
+        android:layout_height="match_parent"
+        android:background="#00000000">
+
+        <com.psb.myapplication.CustomViewL
+            android:id="@+id/mCustomView"
+            android:layout_width="match_parent"
+            android:layout_height="220dp"
+            android:layout_alignParentBottom="true"
+            android:layout_marginBottom="0dp"
+            android:background="#00000000"
+            android:orientation="horizontal" />
+    </RelativeLayout>
 
     <ImageView
         android:id="@+id/recordvideo"

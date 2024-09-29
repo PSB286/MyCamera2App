@@ -404,7 +404,6 @@ public class Camera2Proxy {
         mPreviewRequestBuilder=PreviewRequestBuilder;
         mPreviewRequest=PreviewRequest;
 
-
         if (mCameraDevice == null || mCameraCharacteristics == null || mPreviewRequestBuilder == null) {
            Log.v("--Zoom--","mCameraDevice:"+mCameraDevice+" mCameraCharacteristics:"+mCameraCharacteristics+" mPreviewRequestBuilder:"+mPreviewRequestBuilder);
             return;
@@ -546,7 +545,7 @@ public class Camera2Proxy {
 
         Log.d("--focusOnPoint--", "focusOnPoint: rect: " + rect);
 
-      //  rect.set(360 - 5, 360 - 5, 360 + 5, 360 + 5);
+        rect.set(360 - 5, 360 - 5, 360 + 5, 360 + 5);
 
         // 6. 设置 AF、AE 的测光区域，即上述得到的 rect
         mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_REGIONS, new MeteringRectangle[]{new MeteringRectangle(rect, 1000)});
@@ -566,10 +565,6 @@ public class Camera2Proxy {
         }
     }
 
-//    // 辅助方法：确保坐标在合法范围内
-//    private int clamp(int value, int min, int max) {
-//        return Math.max(min, Math.min(value, max));
-//    }
 
     // 对焦回调
     private final CameraCaptureSession.CaptureCallback mAfCaptureCallback = new CameraCaptureSession.CaptureCallback() {
