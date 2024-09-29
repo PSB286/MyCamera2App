@@ -146,6 +146,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     boolean isLayout = false;
     boolean isClickFocus = false;
     boolean isSwichCamera=false;
+    boolean isAnimator=true;
     boolean isOption=false;
     boolean isLayoutSwich=false;
     boolean isRecordingflg=false;
@@ -522,6 +523,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     }
     // 初始化变量
     private void initVariable() {
+
         // 绑定TextureView
         mTextureView = findViewById(R.id.texture); // 绑定TextureView
         mTextureView.setSurfaceTextureListener(mSurfaceTextureListener);
@@ -695,10 +697,10 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
               //  Toast.makeText(CameraActivity.this, "点击了拍照按钮", Toast.LENGTH_SHORT).show();
                 isCaptureingflg =true;
                 switchCameraWithMaskAnimation();
+               // stopPreview();
                 Log.d("--1CameraActivity--", "123");
                 takePicture();
                 mMediaActionSound.play(MediaActionSound.SHUTTER_CLICK); // 播放拍照声音
-               // stopPreview();
             }
         });
 
@@ -1093,7 +1095,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     private void switchCameraWithMaskAnimation() {
         // 确保没有正在进行的动画
         cancelCurrentAnimator();
-        if (mCameraDevice != null) {
+        if (mCameraDevice != null&&isLayoutSwich||isSwichCamera||isOption||isStopRecord||isCaptureingflg) {
             // 创建一个蒙版视图
             maskView = new View(this);
             maskView.setBackgroundColor(Color.BLACK); // 设置背景色为黑色
@@ -1109,10 +1111,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(width, height);
 
             maskView.setLayoutParams(params);
-
-            // 将蒙版视图添加到 mTextureView 的父布局中
-            parent.addView(maskView, params);
-
+                parent.addView(maskView, params);
             // 添加动画效果
             ValueAnimator animator = ValueAnimator.ofFloat(0f, 1f);
             animator.setDuration(150); // 动画持续时间
@@ -1127,16 +1126,17 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                     maskView.setAlpha(alpha);
                 }
             });
-
-
-
-            animator.start();
+            if(isAnimator) {
+                animator.start();
+                isAnimator = false;
+            }
             currentAnimator = animator;
             // 在动画结束后关闭相机
             animator.addListener(new AnimatorListenerAdapter() {
+                // 动画结束后执行
                 @Override
                 public void onAnimationEnd(Animator animation) {
-
+                   isAnimator=true;
                     if(isSwichCamera) {
                         SwichCamera(maskView);
                     }
@@ -1146,6 +1146,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                     }
                     if(isLayoutSwich)
                     {
+                        isLayoutSwich=false;
                         Swichlayout(maskView);
                     }
                     if(isStopRecord)
@@ -1160,6 +1161,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                     }
                 }
             });
+
+
         }
     }
 
@@ -1168,30 +1171,6 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             currentAnimator.cancel();
             currentAnimator = null;
         }
-    }
-    int i=0;
-    int x=0;
-    private void CaptureLoading(View maskView) {
-        isCaptureingflg=false;
-        // 开启一个新的线程实现移除蒙版，并且延迟600毫秒，等待摄像头切换成功
-        // 创建 Runnable
-        Runnable removeMaskRunnable = new Runnable() {
-            @Override
-            public void run() {
-                ViewGroup parent = (ViewGroup) mTextureView.getParent();
-                parent.removeView(maskView); // 移除蒙版视图
-                Load.setVisibility(View.GONE);
-                Handleding =true;
-                Log.d("CaptureLoading", "x:" + x);
-            }
-        };
-        if(Handleding) {
-            Handleding = false;
-            // 执行延迟任务
-            handler2.postDelayed(removeMaskRunnable, 1); // 延迟 870 毫秒
-            Log.d("CaptureLoading", "i:" + i);
-        }
-
     }
 
     private void RecordLoading(View maskView)  {
@@ -1202,6 +1181,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             @Override
             public void run() {
                 ViewGroup parent = (ViewGroup) mTextureView.getParent();
+                maskView.setAlpha(0f);
                 parent.removeView(maskView); // 移除蒙版视图
                 Load.setVisibility(View.GONE);
             }
@@ -1213,8 +1193,6 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
     private void Swichlayout(final View maskView) {
         openCamera(mTextureView.getWidth(), mTextureView.getHeight());
-
-        isLayoutSwich=false;
         // 重新创建预览会话
         createCaptureSessionAsync();
 
@@ -1286,7 +1264,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         if(Handleding) {
             Handleding = false;
             // 执行延迟任务
-            handler2.postDelayed(removeMaskRunnable, 870); // 延迟 870 毫秒
+            handler2.postDelayed(removeMaskRunnable, 400); // 延迟 870 毫秒
         }
     }
 
@@ -1426,6 +1404,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             Title.setVisibility(View.VISIBLE);
             void_quality.setVisibility(View.VISIBLE);
             falsh_switch.setVisibility(View.GONE);
+s
+            largest=new Size(4,3);
             isLayout=true;
             if(!isRecordflag)
             {
@@ -1441,7 +1421,9 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             isLayoutSwich=true;
             mFlashMode = 2;
             SwichFlash();
-            switchCameraWithMaskAnimation();
+            if(isLayoutSwich) {
+                switchCameraWithMaskAnimation();
+            }
             mCameraProxy.mZoom=0;
 
         } else {
@@ -1462,7 +1444,9 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             mFlashMode = 2;
             isLayout=false;
             SwichFlash();
-            switchCameraWithMaskAnimation();
+            if(isLayoutSwich) {
+                switchCameraWithMaskAnimation();
+            }
         }
 
     }
@@ -1672,13 +1656,11 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
     private void Position_frame(Size previewSize) {
         if(largest.getWidth()==4||largest.getWidth()==16) {
-
             // 获取 FrameLayout.LayoutParams
             FrameLayout.LayoutParams layoutParams = (FrameLayout.LayoutParams) mTextureView.getLayoutParams();
             Log.d("--Position_frame--", "4/3");
             // 设置 topMargin 为 100dp
-            int margin = (int) (100 * getResources().getDisplayMetrics().density);
-            layoutParams.topMargin = margin;
+            layoutParams.topMargin = (int) (100 * getResources().getDisplayMetrics().density);
 
             // 应用新的 LayoutParams
             mTextureView.setLayoutParams(layoutParams);
@@ -1690,8 +1672,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             FrameLayout.LayoutParams layoutParams = (FrameLayout.LayoutParams) mTextureView.getLayoutParams();
 
             // 设置 topMargin 为 100dp
-            int margin = (int) (160 * getResources().getDisplayMetrics().density);
-            layoutParams.topMargin = margin;
+            layoutParams.topMargin = (int) (160 * getResources().getDisplayMetrics().density);
 
             // 应用新的 LayoutParams
             mTextureView.setLayoutParams(layoutParams);
@@ -1702,8 +1683,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             FrameLayout.LayoutParams layoutParams = (FrameLayout.LayoutParams) mTextureView.getLayoutParams();
 
             // 设置 topMargin 为 100dp
-            int margin = (int) (0 * getResources().getDisplayMetrics().density);
-            layoutParams.topMargin = margin;
+            layoutParams.topMargin = (int) (0 * getResources().getDisplayMetrics().density);
 
             // 应用新的 LayoutParams
             mTextureView.setLayoutParams(layoutParams);
