@@ -572,6 +572,9 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         }
         // 初始化焦点光圈
         focusSunView = findViewById(R.id.focus_sun_view);
+        // 设置曝光范围
+        focusSunView.setExposureLimit(2.0f, -2.0f);
+
         Previous_recorderPath = null;
         newroidPath = null;
         Choose = findViewById(R.id.Choose);
@@ -883,8 +886,13 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 switchCameraWithMaskAnimation();
             }
         });
-
-
+        focusSunView.setOnExposureChangeListener(new FocusSunView.OnExposureChangeListener() {
+            @Override
+            public void onExposureChangeListener(float exposure) {
+                // 应用曝光值到 Camera2 API
+                applyExposure(exposure);
+            }
+        });
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -2246,5 +2254,17 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         }
 
         return rotation;
+    }
+
+    private void applyExposure(float exposure) {
+        Log.d("applyExposure", "applyExposure: " + exposure);
+        if (previewRequestBuilder != null) {
+            try {
+                previewRequestBuilder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, (int)exposure);
+                captureSession.setRepeatingRequest(previewRequestBuilder.build(), null, null);
+            } catch (CameraAccessException e) {
+                e.printStackTrace();
+            }
+        }
     }
 }
