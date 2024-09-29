@@ -446,6 +446,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 stopRecordingVideo();
                 //录像结束声音
                 mMediaActionSound.play(MediaActionSound.STOP_VIDEO_RECORDING);
+                switchCameraWithMaskAnimation();
                 mPictureIv.setImageBitmap(getLatestThumbBitmap(this));
                 mPictureIv.setEnabled(true);
                 record.setScaleX(1f);
@@ -684,7 +685,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                     try {
                       //  Toast.makeText(CameraActivity.this, "停止录像按钮", Toast.LENGTH_SHORT).show();
                         isStopRecord=true;
-                        //switchCameraWithMaskAnimation();
+                        switchCameraWithMaskAnimation();
                         stopRecordingVideo();
                         //录像结束声音
                         mMediaActionSound.play(MediaActionSound.STOP_VIDEO_RECORDING);
@@ -1052,7 +1053,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         mPictureIv.setVisibility(View.VISIBLE);
         void_quality.setVisibility(View.VISIBLE);
         mCustomViewL.setVisibility(View.VISIBLE);
-        isStopRecord=true;
+//isStopRecord=true;
         //switchCameraWithMaskAnimation();
         // 停止计时器
         handler.removeCallbacks(runnable);
@@ -1205,6 +1206,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                     }
                     if(isStopRecord)
                     {
+                        isStopRecord=false;
                         RecordLoading(maskView);
                     }
                     if (isCaptureingflg) {
@@ -1230,15 +1232,19 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
     private void RecordLoading(View maskView)  {
         isLayoutSwich=false;
+        Load.setVisibility(View.VISIBLE);
+        Load.startAnimation(LoadAnimation); //拍照按钮动画
         // 开启一个新的线程实现移除蒙版，并且延迟600毫秒，等待摄像头切换成功
         // 创建 Runnable
         Runnable removeMaskRunnable = new Runnable() {
             @Override
             public void run() {
                 ViewGroup parent = (ViewGroup) mTextureView.getParent();
+                Load.setAlpha(0f);
+                Load.setVisibility(View.GONE);
                 maskView.setAlpha(0f);
                 parent.removeView(maskView); // 移除蒙版视图
-                Load.setVisibility(View.GONE);
+
             }
         };
 
