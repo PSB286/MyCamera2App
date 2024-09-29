@@ -58,13 +58,21 @@ public class FocusSunView extends View {
     }
 
     private void init() {
+        // 初始化画笔
         sunPaint.setStrokeCap(Paint.Cap.ROUND);
+        // 设置画笔颜色
         sunPaint.setStyle(Paint.Style.STROKE);
+        // 设置画笔宽度
         moonPaint.setStyle(Paint.Style.FILL);
+        // 设置画
         moonPaint.setStrokeCap(Paint.Cap.ROUND);
+        // 设置画笔宽度
         framePaint.setStrokeCap(Paint.Cap.ROUND);
+        // 设置画笔样式
         framePaint.setStyle(Paint.Style.STROKE);
+        // 设置笔触和连接处样式
         framePaint.setStrokeJoin(Paint.Join.ROUND);
+        // 设置画笔颜色
         dp10 = dp2px(getContext(), 10f);
         dp8 = dp2px(getContext(), 8f);
         dp6 = dp2px(getContext(), 6f);
@@ -160,6 +168,7 @@ public class FocusSunView extends View {
                             countdown = new CountDownTimer(2000, 1000) { // 将倒计时总时长改为2000毫秒
                                 @Override
                                 public void onTick(long millisUntilFinished) {
+                                    // 倒计时中
                                     if (millisUntilFinished >= 1000 && millisUntilFinished <= 1500) {
                                         paintColor = Color.parseColor("#FFAAAAAA");
                                         postInvalidate();
@@ -182,6 +191,7 @@ public class FocusSunView extends View {
     }
 
 
+    // 销毁
     @Override
     protected void onDetachedFromWindow() {
         if (focusAnimator != null) {
@@ -195,6 +205,7 @@ public class FocusSunView extends View {
         super.onDetachedFromWindow();
     }
 
+    // 绘制
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
@@ -265,12 +276,13 @@ public class FocusSunView extends View {
         }
         canvas.restore();
     }
-
+    // 测量
     @SuppressLint("ClickableViewAccessibility")
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         if (event != null) {
             switch (event.getAction()) {
+                // 按下
                 case MotionEvent.ACTION_DOWN:
                     if (circleY < 0f) {
                         circleY = getHeight() * progress;
@@ -279,6 +291,7 @@ public class FocusSunView extends View {
                     posY = event.getY();
                     paintColor = Color.WHITE;
                     break;
+                    // 移动
                 case MotionEvent.ACTION_MOVE:
                     curPosY = event.getY();
                     paintColor = Color.WHITE;
@@ -324,20 +337,24 @@ public class FocusSunView extends View {
         return true;
     }
 
+    // 计算坐标
     private PointF calculationPoint(float angle, float radius) {
         float x = (centerOfCircle) + (radius) * (float) Math.cos(angle * Math.PI / 180f);
         float y = (getHeight() * progress) + (radius) * (float) Math.sin(angle * Math.PI / 180f);
         return new PointF(x, y);
     }
 
+    // 设置监听器
     public void setOnExposureChangeListener(OnExposureChangeListener onExposureChangeListener) {
         this.onExposureChangeListener = onExposureChangeListener;
     }
 
+    // 监听器
     public interface OnExposureChangeListener {
         void onExposureChangeListener(float exposure);
     }
 
+    // dp转px
     private float dp2px(Context context, float dp) {
         return dp * context.getResources().getDisplayMetrics().density + .5f;
     }
