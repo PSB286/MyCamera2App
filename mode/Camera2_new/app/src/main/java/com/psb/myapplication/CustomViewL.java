@@ -143,7 +143,7 @@ public class CustomViewL extends LinearLayout {
                     // 高度
                     LinearLayout.LayoutParams.WRAP_CONTENT);
             // 设置边距
-            params.setMargins(20, 0, 20, 190); // 增加左侧边距 20dp
+            params.setMargins(20, 0, 20, -400); // 增加左侧边距 20dp
             // 添加到布局中
             addView(textView, params);
 

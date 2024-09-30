@@ -9,6 +9,7 @@ import android.graphics.Color;
 import android.graphics.ImageFormat;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
 import android.graphics.drawable.ColorDrawable;
 import android.hardware.camera2.CameraAccessException;
@@ -501,8 +502,8 @@ public class Camera2Proxy {
         Log.d("--focusOnPoint--", "focusOnPoint: imgScale: " + imgScale + ", verticalOffset: " + verticalOffset + ", horizontalOffset: " + horizontalOffset);
 
         // 3. 将点击的坐标转换为图像上的坐标
-        x = x / imgScale + horizontalOffset; // 图像x坐标
-        y = y / imgScale + verticalOffset; // 图像y坐标
+     //   x = x / imgScale + horizontalOffset; // 图像x坐标
+     //   y = y / imgScale + verticalOffset; // 图像y坐标
 
         // 图像坐标旋转
         if (mDisplayRotate == 90) {
@@ -543,16 +544,10 @@ public class Camera2Proxy {
         // 5. 计算点击区域相对于裁剪区域的坐标
         double tapAreaRatio = 0.1; // 点击区域相对于裁剪区域的比例大小
         Rect rect = new Rect();
-        rect.left = clamp((int) (x - tapAreaRatio / 2 * cropRegion.width()), 0, cropRegion.width());
-        rect.right = clamp((int) (x + tapAreaRatio / 2 * cropRegion.width()), 0, cropRegion.width());
-        rect.top = clamp((int) (y - tapAreaRatio / 2 * cropRegion.height()), 0, cropRegion.height());
-        rect.bottom = clamp((int) (y + tapAreaRatio / 2 * cropRegion.height()), 0, cropRegion.height());
-
-        Log.d("--focusOnPoint--", "focusOnPoint: rect: " + rect);
-        rect.set(360 - 5, 360 - 5, 360 + 5, 360 + 5);
-
-        // 画出矩形
-        drawRect(rect,mTextureView);
+        rect.left = clamp((int) (x - tapAreaRatio / 5 * cropRegion.width()), 0, cropRegion.width());
+        rect.right = clamp((int) (x + tapAreaRatio / 5 * cropRegion.width()), 0, cropRegion.width());
+        rect.top = clamp((int) (y - tapAreaRatio / 5 * cropRegion.height()), 0, cropRegion.height());
+        rect.bottom = clamp((int) (y + tapAreaRatio / 5 * cropRegion.height()), 0, cropRegion.height());
 
 
         // 6. 设置 AF、AE 的测光区域，即上述得到的 rect
@@ -561,7 +556,10 @@ public class Camera2Proxy {
 
         // 设置对焦模式为 自动
         mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_AUTO);
-
+        // 设置自动曝光模式为自动
+       // mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_IDLE);
+        // 设置自动曝光模式为自动
+        mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
         // 开启自动曝光触发
         mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER, CameraMetadata.CONTROL_AE_PRECAPTURE_TRIGGER_START);
 
@@ -571,6 +569,8 @@ public class Camera2Proxy {
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
+        mPreviewRequest = mPreviewRequestBuilder.build();
+         startPreview();
     }
     Runnable mDrawRectRunnable = null;
     private void drawRect(Rect rect,AutoFitTextureView mTextureView) {

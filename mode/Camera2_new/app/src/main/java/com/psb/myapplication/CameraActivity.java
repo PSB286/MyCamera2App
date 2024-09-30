@@ -18,9 +18,11 @@ import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.ImageFormat;
 import android.graphics.Matrix;
+import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
@@ -316,22 +318,22 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                         if (isZooming) {
                             float newDistance = getFingerSpacing(event);
                             if (newDistance > mOldDistance) {
-                                if(colorState==1&&isRecordingflg) {
+                                if(previewRequestBuilder!=null&& recordvideoRequestBuilder!=null) {
+                                    if (colorState == 1 && isRecordingflg) {
 
-                                    mCameraProxy.handleZoom(true, mCameraDevice, characteristics, recordvideoRequestBuilder, mPreviewRequest, captureSession);
-                                }
-                                else
-                                {
-                                    mCameraProxy.handleZoom(true, mCameraDevice, characteristics, previewRequestBuilder, mPreviewRequest, captureSession);
+                                        mCameraProxy.handleZoom(true, mCameraDevice, characteristics, recordvideoRequestBuilder, mPreviewRequest, captureSession);
+                                    } else {
+                                        mCameraProxy.handleZoom(true, mCameraDevice, characteristics, previewRequestBuilder, mPreviewRequest, captureSession);
+                                    }
                                 }
                             } else if (newDistance < mOldDistance) {
-                                if(colorState==1&&isRecordingflg) {
+                                if(previewRequestBuilder!=null&& recordvideoRequestBuilder!=null) {
+                                    if (colorState == 1 && isRecordingflg) {
 
-                                    mCameraProxy.handleZoom(false, mCameraDevice, characteristics, recordvideoRequestBuilder, mPreviewRequest, captureSession);
-                                }
-                                else
-                                {
-                                    mCameraProxy.handleZoom(false, mCameraDevice, characteristics, previewRequestBuilder, mPreviewRequest, captureSession);
+                                        mCameraProxy.handleZoom(false, mCameraDevice, characteristics, recordvideoRequestBuilder, mPreviewRequest, captureSession);
+                                    } else {
+                                        mCameraProxy.handleZoom(false, mCameraDevice, characteristics, previewRequestBuilder, mPreviewRequest, captureSession);
+                                    }
                                 }
                             }
                             mOldDistance = newDistance;
@@ -354,13 +356,13 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                         if (!isZooming && pointerCount == 1) {
                             // 点击对焦
                             // Toast.makeText(getApplicationContext(), "单指按下", Toast.LENGTH_SHORT).show();
-                            if(colorState==1&&isRecordingflg) {
-                               // mCameraProxy.handleZoom(false, mCameraDevice, characteristics, recordvideoRequestBuilder, mPreviewRequest, captureSession);
-                                mCameraProxy.focusOnPoint((int) event.getX(), (int) event.getY(), mTextureView.getWidth(), mTextureView.getHeight(),mCameraDevice, recordvideoRequestBuilder, captureSession,previewSize,mTextureView);
-                            }
-                            else
-                            {
-                                mCameraProxy.focusOnPoint((int) event.getX(), (int) event.getY(), mTextureView.getWidth(), mTextureView.getHeight(),mCameraDevice, previewRequestBuilder, captureSession,previewSize,mTextureView);
+                            if (previewRequestBuilder!=null&& recordvideoRequestBuilder!=null) {
+                                if (colorState == 1 && isRecordingflg) {
+                                    // mCameraProxy.handleZoom(false, mCameraDevice, characteristics, recordvideoRequestBuilder, mPreviewRequest, captureSession);
+                                    mCameraProxy.focusOnPoint((int) event.getX(), (int) event.getY(), mTextureView.getWidth(), mTextureView.getHeight(), mCameraDevice, recordvideoRequestBuilder, captureSession, previewSize, mTextureView);
+                                } else {
+                                    mCameraProxy.focusOnPoint((int) event.getX(), (int) event.getY(), mTextureView.getWidth(), mTextureView.getHeight(), mCameraDevice, previewRequestBuilder, captureSession, previewSize, mTextureView);
+                                }
                             }
                             // triggerFocusAtPoint(event.getX(), event.getY(), previewSize.getWidth(), previewSize.getHeight());
                             focusSunView.setVisibility(View.VISIBLE);
@@ -1618,6 +1620,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
      */
     private final TextureView.SurfaceTextureListener mSurfaceTextureListener
             = new TextureView.SurfaceTextureListener() {
+        // 当SurfaceTexture可用时，打开摄像头
         @Override
         public void onSurfaceTextureAvailable(SurfaceTexture texture
                 , int width, int height) {
@@ -1630,17 +1633,41 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         public void onSurfaceTextureSizeChanged(SurfaceTexture texture
                 , int width, int height) {
             configureTransform(width, height);
+            // 每次预览更新时绘制
+            //drawOnTextureView();
         }
 
+        // 当SurfaceTexture被销毁时，释放摄像头资源
         @Override
         public boolean onSurfaceTextureDestroyed(SurfaceTexture texture) {
             return true;
         }
 
+        // 当SurfaceTexture更新时，不做任何操作
         @Override
         public void onSurfaceTextureUpdated(SurfaceTexture texture) {
+
         }
     };
+
+    private void drawOnTextureView() {
+        Canvas canvas = mTextureView.lockCanvas(null);
+        if (canvas != null) {
+            Rect rect = new Rect( 275,  424,  438, 547);
+            // 创建一个Paint对象用于定义矩形的绘制属性（如颜色、描边宽度等）
+            Paint paint = new Paint();
+            paint.setColor(Color.RED); // 设置矩形的颜色为红色
+            paint.setStyle(Paint.Style.STROKE); // 设置为描边样式
+            paint.setStrokeWidth(5); // 设置描边宽度为5像素
+
+            // 绘制矩形
+            canvas.drawRect(rect, paint);
+
+            // 释放并提交绘制结果
+            mTextureView.unlockCanvasAndPost(canvas);
+        }
+    }
+
 
     /*
     操作相机函数
@@ -1672,7 +1699,6 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             surfaces.clear();
         }
 
-
         CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
         try {
             // 获取指定摄像头的特性
@@ -1687,7 +1713,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             // 设置不同的宽高比
             double aspectRatio1x1 = 1.0; // 1:1
             double aspectRatio4x3 = 4.0 / 3.0; // 4:3
-            double aspectRatio16x9 = 16.0 / 9.0;
+            double aspectRatio16x9 = 16.0 / 9.0;//
             double aspectRatioFull = (double) (screenHeight / (double)screenWidth);//FULL
 
             // 分别获取 1:1、4:3 和 FULL 的最大尺寸
@@ -1696,6 +1722,10 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             List<Size> sizes16x9 = filterSizesByAspectRatio(outputSizes, aspectRatio16x9);
             List<Size> sizesFull = filterFULLSizesByAspectRatio(outputSizes, aspectRatioFull);
 
+            Log.d("--2initAutoFitTextureView--", "sizes1x1:"+sizes1x1);
+            Log.d("--2initAutoFitTextureView--", "sizes4x3:"+sizes4x3);
+            Log.d("--2initAutoFitTextureView--", "sizes16x9:"+sizes16x9);
+            Log.d("--2initAutoFitTextureView--", "sizesFull:"+sizesFull  );
             Size largest1x1 = sizes1x1.isEmpty() ? null : Collections.max(sizes1x1, new CompareSizesByArea());
             Size largest4x3 = sizes4x3.isEmpty() ? null : Collections.max(sizes4x3, new CompareSizesByArea());
             Size largest16x9 = sizes16x9.isEmpty() ? null : Collections.max(sizes16x9, new CompareSizesByArea());
@@ -1716,21 +1746,25 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             //previewSize=new Size(1600, 720);
             if(largest.getWidth()==20&&isCapture) {
                 previewSize = chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class), width, height, largestFull,"FULL");
+                Log.d("--initAutoFitTextureView--", "previewSize:" + previewSize.getWidth()+" height:"+previewSize.getHeight());
                 mImageReader = ImageReader.newInstance(largestFull.getWidth(), largestFull.getHeight(), ImageFormat.JPEG, 2);
                 Log.d("--initAutoFitTextureView--", "isCapture");
             }
             if(largest.getWidth()==1&&isCapture)
             {
                 previewSize = chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class), width, height, largest1x1,"1:1");
+                Log.d("--initAutoFitTextureView--", "previewSize:" + previewSize.getWidth()+" height:"+previewSize.getHeight());
                 mImageReader = ImageReader.newInstance(largest1x1.getWidth(), largest1x1.getHeight(), ImageFormat.JPEG, 2);
             }
             if(isRecord4)
             {
                 previewSize = chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class), width, height, largest4x3,"4x3");
+                Log.d("--initAutoFitTextureView--", "previewSize:" + previewSize.getWidth()+" height:"+previewSize.getHeight());
             }
             if(isRecord5)
             {
                 previewSize = chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class), width, height, largest16x9,"16x9");
+                Log.d("--initAutoFitTextureView--", "previewSize:" + previewSize.getWidth()+" height:"+previewSize.getHeight());
             }
             Position_frame(previewSize);
             // 横竖屏判断
@@ -1781,7 +1815,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         List<Size> filteredSizes = new ArrayList<>();
 
         // 定义一个容差值，允许一定的误差
-        double tolerance = 0.05; // 可以根据需求调整
+        double tolerance = 0.1; // 可以根据需求调整
 
         // 记录最接近目标宽高比的尺寸和差异
         Size closestSize = null;
@@ -1831,7 +1865,6 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             Log.d("--Position_frame--", "1");
             // 获取 FrameLayout.LayoutParams
             FrameLayout.LayoutParams layoutParams = (FrameLayout.LayoutParams) mTextureView.getLayoutParams();
-
             // 设置 topMargin 为 100dp
             layoutParams.topMargin = (int) (160 * getResources().getDisplayMetrics().density);
 
@@ -1973,12 +2006,12 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             if(Objects.equals(flg, "FULL"))
             {
                 Log.d("--chooseOptimalSize--", "16/9");
-                return sortedSizes.get(1);
+                return sortedSizes.get(2);
             }
             else
             {
                 Log.d("--chooseOptimalSize--", "1/1");
-                return sortedSizes.get(0);
+                return sortedSizes.get(3);
             }
         } else {
             System.out.println("找不到合适的预览尺寸！！！");
