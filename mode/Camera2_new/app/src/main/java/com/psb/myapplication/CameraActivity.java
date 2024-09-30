@@ -159,6 +159,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     boolean isRightTransverse=false;
     boolean isLeftTransverse=false;
     boolean isinversion=false;
+    boolean Strongflash=false;
     View maskView;
     View maskViewbuf;
     ViewGroup parentbuf;
@@ -353,7 +354,14 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                         if (!isZooming && pointerCount == 1) {
                             // 点击对焦
                             // Toast.makeText(getApplicationContext(), "单指按下", Toast.LENGTH_SHORT).show();
-                             mCameraProxy.focusOnPoint((int) event.getX(), (int) event.getY(), mTextureView.getWidth(), mTextureView.getHeight(),mCameraDevice, previewRequestBuilder, captureSession,previewSize,mTextureView);
+                            if(colorState==1&&isRecordingflg) {
+                               // mCameraProxy.handleZoom(false, mCameraDevice, characteristics, recordvideoRequestBuilder, mPreviewRequest, captureSession);
+                                mCameraProxy.focusOnPoint((int) event.getX(), (int) event.getY(), mTextureView.getWidth(), mTextureView.getHeight(),mCameraDevice, recordvideoRequestBuilder, captureSession,previewSize,mTextureView);
+                            }
+                            else
+                            {
+                                mCameraProxy.focusOnPoint((int) event.getX(), (int) event.getY(), mTextureView.getWidth(), mTextureView.getHeight(),mCameraDevice, previewRequestBuilder, captureSession,previewSize,mTextureView);
+                            }
                             // triggerFocusAtPoint(event.getX(), event.getY(), previewSize.getWidth(), previewSize.getHeight());
                             focusSunView.setVisibility(View.VISIBLE);
                             // 设置焦点位置
@@ -974,6 +982,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
         switch (mFlashMode) {
             case 0:
+                Strongflash=true;
                 mFlashMode = 1;
                 falsh_switch.setImageResource(R.drawable.falshlightaout);
                 // 设置闪光灯模式为自动
@@ -991,10 +1000,13 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             case 1:
                 mFlashMode = 2;
                 falsh_switch.setImageResource(R.drawable.falshlightcopen);
-
+                //设置闪光灯为强闪
+                previewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_ALWAYS_FLASH);
+                Strongflash=true;
                 break;
             case 2:
                 mFlashMode = 3;
+                Strongflash=false;
                 falsh_switch.setImageResource(R.drawable.falshlightclose);
                 // 设置闪光灯模式为自动
                 previewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
@@ -1123,8 +1135,6 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             mMediaRecorder.start();
             isRecording = true;
 
-            // private ImageView record, switch_camera, capture,mPictureIv,falsh_switch;
-            // private TextView switch_frame,void_quality,timerText;
             timerText.setVisibility(View.VISIBLE);
             switch_camera.setVisibility(View.GONE);
             mPictureIv.setVisibility(View.GONE);
@@ -1444,7 +1454,22 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             // 根据设备方向计算设置照片的方向
             captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, rotation+90);
             // 捕获一帧图像
-            captureSession.capture(captureBuilder.build(), null, null);
+            if(!Strongflash) {
+                captureSession.capture(captureBuilder.build(), null, null);
+            }
+            else //延迟1000ms后执行
+            {
+                handler2.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            captureSession.capture(captureBuilder.build(), null, null);
+                        } catch (CameraAccessException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                }, 500);
+            }
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
@@ -2318,13 +2343,12 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     }
 
     private void applyExposure(float exposure) {
-        //exposure=exposure-50;
-        exposure=exposure%100-50;
+        exposure=80*(exposure/9950)-40;
         Log.d("applyExposure", "applyExposure: " + exposure);
-        if (previewRequestBuilder != null&&!isRecordingflg&&colorState==0) {
+        if (colorState==1&&isRecordingflg) {
             try {
-                previewRequestBuilder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, (int)exposure);
-                captureSession.setRepeatingRequest(previewRequestBuilder.build(), null, null);
+                recordvideoRequestBuilder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, (int)exposure);
+                captureSession.setRepeatingRequest(recordvideoRequestBuilder.build(), null, null);
             } catch (CameraAccessException e) {
                 e.printStackTrace();
             }
@@ -2332,8 +2356,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         else
         {
             try {
-                recordvideoRequestBuilder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, (int)exposure);
-                captureSession.setRepeatingRequest(recordvideoRequestBuilder.build(), null, null);
+                previewRequestBuilder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, (int)exposure);
+                captureSession.setRepeatingRequest(previewRequestBuilder.build(), null, null);
             } catch (CameraAccessException e) {
                 e.printStackTrace();
             }

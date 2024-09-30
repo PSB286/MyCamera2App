@@ -4,9 +4,13 @@ import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Context;
+import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.ImageFormat;
+import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.SurfaceTexture;
+import android.graphics.drawable.ColorDrawable;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraCharacteristics;
@@ -27,6 +31,7 @@ import android.util.Size;
 import android.view.OrientationEventListener;
 import android.view.Surface;
 import android.view.SurfaceHolder;
+import android.view.View;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -296,7 +301,7 @@ public class Camera2Proxy {
     }
     // 获取图片的旋转角度
     private int getJpegOrientation(int deviceOrientation) {
-        if (deviceOrientation == android.view.OrientationEventListener.ORIENTATION_UNKNOWN) return 0;
+        if (deviceOrientation == OrientationEventListener.ORIENTATION_UNKNOWN) return 0;
         int sensorOrientation = mCameraCharacteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
         // Round device orientation to a multiple of 90
         deviceOrientation = (deviceOrientation + 45) / 90 * 90;
@@ -544,8 +549,11 @@ public class Camera2Proxy {
         rect.bottom = clamp((int) (y + tapAreaRatio / 2 * cropRegion.height()), 0, cropRegion.height());
 
         Log.d("--focusOnPoint--", "focusOnPoint: rect: " + rect);
-
         rect.set(360 - 5, 360 - 5, 360 + 5, 360 + 5);
+
+        // 画出矩形
+        drawRect(rect,mTextureView);
+
 
         // 6. 设置 AF、AE 的测光区域，即上述得到的 rect
         mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_REGIONS, new MeteringRectangle[]{new MeteringRectangle(rect, 1000)});
@@ -563,6 +571,39 @@ public class Camera2Proxy {
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
+    }
+    Runnable mDrawRectRunnable = null;
+    private void drawRect(Rect rect,AutoFitTextureView mTextureView) {
+        // 取消之前的绘制
+       if(mDrawRectRunnable!=null) {
+           mTextureView.removeCallbacks(mDrawRectRunnable);
+       }
+
+        // 创建一个Runnable来绘制矩形
+        mDrawRectRunnable = new Runnable() {
+            @Override
+            public void run() {
+                Canvas canvas = mTextureView.lockCanvas();
+                if (canvas != null) {
+                    drawFocusRect(canvas, rect);
+                    mTextureView.unlockCanvasAndPost(canvas);
+                }
+            }
+        };
+
+        // 延迟执行Runnable来避免在触摸事件中直接绘制
+        mTextureView.postDelayed(mDrawRectRunnable, 100);
+    }
+
+    private void drawFocusRect(Canvas canvas, Rect rect) {
+        // 获取画笔
+        Paint paint = new Paint();
+        paint.setColor(Color.RED);
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setStrokeWidth(5);
+
+        // 绘制矩形
+        canvas.drawRect(rect, paint);
     }
 
 

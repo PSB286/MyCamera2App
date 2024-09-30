@@ -100,6 +100,9 @@ public class FocusSunView extends View {
         }
     }
 
+
+    // 设置曝光值
+
     public void startCountdown(boolean reset) {
         paintColor = Color.WHITE;
 
