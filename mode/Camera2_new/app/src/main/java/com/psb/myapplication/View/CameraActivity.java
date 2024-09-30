@@ -1,8 +1,11 @@
-package com.psb.myapplication;
+package com.psb.myapplication.View;
 
-import static com.psb.myapplication.ImageUtils.getLatestThumbBitmap;
-import static com.psb.myapplication.ImageUtils.rotateBitmap;
+import com.psb.myapplication.R;
+import  com.psb.myapplication.Utils.ImageUtils;
+import  com.psb.myapplication.Utils.Camera2Proxy;
 
+import static com.psb.myapplication.Utils.ImageUtils.getLatestThumbBitmap;
+import static com.psb.myapplication.Utils.ImageUtils.rotateBitmap;
 import static java.lang.Thread.sleep;
 
 import android.Manifest;

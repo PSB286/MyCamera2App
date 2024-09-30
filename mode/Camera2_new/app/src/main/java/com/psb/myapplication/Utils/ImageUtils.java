@@ -1,4 +1,4 @@
-package com.psb.myapplication;
+package com.psb.myapplication.Utils;
 
 import android.annotation.SuppressLint;
 import android.content.ContentResolver;
@@ -22,7 +22,7 @@ import java.util.Date;
 // 图片处理类
 public class ImageUtils {
     private static final String TAG = "ImageUtils";                     // TAG
-    static Uri imageUri= null;                                          // 图片的uri
+    public static Uri imageUri= null;                                          // 图片的uri
 
     /**
      * 旋转位图并可选择是否翻转和回收原位图

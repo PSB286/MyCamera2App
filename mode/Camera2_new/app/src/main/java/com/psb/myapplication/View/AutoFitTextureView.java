@@ -1,4 +1,4 @@
-package com.psb.myapplication;
+package com.psb.myapplication.View;
 
 import android.content.Context;
 import android.graphics.Canvas;

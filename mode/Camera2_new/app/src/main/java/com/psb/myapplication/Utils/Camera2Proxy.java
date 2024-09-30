@@ -1,4 +1,4 @@
-package com.psb.myapplication;
+package com.psb.myapplication.Utils;
 
 
 import android.app.Activity;
@@ -23,6 +23,8 @@ import android.util.Size;
 import android.view.OrientationEventListener;
 import android.view.Surface;
 
+import com.psb.myapplication.View.AutoFitTextureView;
+
 public class Camera2Proxy {
 
     private static final String TAG = "Camera2Proxy";                // TAG
@@ -36,7 +38,7 @@ public class Camera2Proxy {
     private CameraDevice dCameraDevice;                              // 对焦相机对象
     private CameraCaptureSession mCaptureSession;                    // 会话
     private CameraCaptureSession dCaptureSession;                    // 对焦会话
-    CaptureRequest.Builder mPreviewRequestBuilder;                   // 相机预览请求的构造器
+    public CaptureRequest.Builder mPreviewRequestBuilder;                   // 相机预览请求的构造器
     CaptureRequest.Builder dPreviewRequestBuilder;                   // 对焦预览请求的构造器
     CaptureRequest mPreviewRequest;                                  // 预览请求
     private Handler mBackgroundHandler;                              // 子线程的Handler
@@ -46,7 +48,7 @@ public class Camera2Proxy {
     private OrientationEventListener mOrientationEventListener;      // 方向监听器
     private int mDisplayRotate = 0;                                  // 屏幕方向
     private int mDeviceOrientation = 0;                              // 设备方向，由相机传感器获取
-    int mZoom = 0;                                                   // 缩放
+    public int mZoom = 0;                                                   // 缩放
 
 
     // 构造函数
