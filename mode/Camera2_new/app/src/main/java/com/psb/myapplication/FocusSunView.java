@@ -11,52 +11,55 @@ import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
 
+// 自定义聚焦及曝光View
 public class FocusSunView extends View {
-    private int paintColor = Color.WHITE;
-    private Paint sunPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private Paint moonPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private Paint framePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private float borderWidth = 3f;
-    private float progress = 0.5f;
-    private float realProcess = 0.5f;
-    private float angle = 360f;
-    private float circleY = -1f;
-    private float lastCircleY = 0f;
-    private float posY = 0f;
-    private float curPosY = 0f;
+    private int paintColor = Color.WHITE;                                   // 默认颜色
+    private Paint sunPaint = new Paint(Paint.ANTI_ALIAS_FLAG);              // 外圆画笔
+    private Paint moonPaint = new Paint(Paint.ANTI_ALIAS_FLAG);             // 内圆画笔
+    private Paint framePaint = new Paint(Paint.ANTI_ALIAS_FLAG);            // 边框画笔
+    private float borderWidth = 3f;                                         // 边框宽度
+    private float progress = 0.5f;                                          // 进度
+    private float realProcess = 0.5f;                                       // 当前进度
+    private float angle = 360f;                                             // 角度
+    private float circleY = -1f;                                            // 圆心
+    private float lastCircleY = 0f;                                         // 上次圆心
+    private float posY = 0f;                                                // 圆心
+    private float curPosY = 0f;                                             // 当前圆心
     private PorterDuffXfermode porterDuffDstOut = new PorterDuffXfermode(PorterDuff.Mode.DST_OUT);
+                                                                            // 取色
     private float dp10 = 0f;
     private float dp8 = 0f;
     private float dp6 = 0f;
     private float dp5 = 0f;
     private float dp3 = 0f;
     private float dp2 = 0f;
-    private float centerOfCircle = 0f;
-    private float circleRadius = 0f;
-    private RectF frameRectF = new RectF(0f, 0f, 0f, 0f);
-    private float frameRadius = 0f;
+    private float centerOfCircle = 0f;                                      // 圆心
+    private float circleRadius = 0f;                                        // 半径
+    private RectF frameRectF = new RectF(0f, 0f, 0f, 0f); // 边框
+    private float frameRadius = 0f;                                          // 半径
     private float _14 = 0f;
-    private CountDownTimer countdown = null;
-    private boolean showLine = false;
-    private float upperExposureLimit = 2f;
-    private float lowerExposureLimit = -2f;
-    private OnExposureChangeListener onExposureChangeListener = null;
-    private float oldExposure = 0f;
-    private ValueAnimator focusAnimator = null;
+    private CountDownTimer countdown = null;                                  // 倒计时
+    private boolean showLine = false;                                         // 是否显示线
+    private float upperExposureLimit = 2f;                                     // 上限
+    private float lowerExposureLimit = -2f;                                    // 下限
+    private OnExposureChangeListener onExposureChangeListener = null;          // 曝光监听器
+    private float oldExposure = 0f;                                            // 当前曝光
+    private ValueAnimator focusAnimator = null;                                 // 动画
 
+    // 无参构造
     public FocusSunView(Context context) {
         this(context, null);
     }
-
+    // 带参数构造
     public FocusSunView(Context context, AttributeSet attrs) {
         this(context, attrs, 0);
     }
-
     public FocusSunView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         init();
     }
 
+    // 初始化
     private void init() {
         // 初始化画笔
         sunPaint.setStrokeCap(Paint.Cap.ROUND);
@@ -81,6 +84,13 @@ public class FocusSunView extends View {
         dp2 = dp2px(getContext(), 2f);
     }
 
+    /**
+     * 重写onMeasure方法，以在测量时进行自定义计算
+     * 此方法主要用于计算圆的中心点、半径以及帧的矩形范围
+     *
+     * @param widthMeasureSpec 用于指定宽度的测量规格
+     * @param heightMeasureSpec 用于指定高度的测量规格
+     */
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
@@ -93,6 +103,13 @@ public class FocusSunView extends View {
         _14 = frameRectF.height() / 4f;
     }
 
+    /**
+     * 设置曝光限制范围
+     * 该方法用于设置传感器的上限和下限曝光值，只有当两者都不为null时，才更新曝光限制范围
+     *
+     * @param upperExposureLimit 上限曝光值 不能为null
+     * @param lowerExposureLimit 下限曝光值 不能为null
+     */
     public void setExposureLimit(Float upperExposureLimit, Float lowerExposureLimit) {
         if (upperExposureLimit != null && lowerExposureLimit != null) {
             this.upperExposureLimit = upperExposureLimit;
@@ -101,8 +118,12 @@ public class FocusSunView extends View {
     }
 
 
-    // 设置曝光值
-
+    /**
+     * 启动倒计时功能
+     * 此方法负责重置并启动一个倒计时，根据是否重置状态，它会执行不同的动画效果和倒计时逻辑
+     *
+     * @param reset boolean类型，决定是否重置倒计时和动画的位置
+     */
     public void startCountdown(boolean reset) {
         paintColor = Color.WHITE;
 
@@ -194,7 +215,14 @@ public class FocusSunView extends View {
     }
 
 
-    // 销毁
+    /**
+     * 当控件从窗口分离时调用此方法
+     * 此方法用于清理资源，避免内存泄漏
+     *
+     * 1. 取消并释放focusAnimator动画对象
+     * 2. 取消并释放countdown计时器对象
+     * 3. 调用父类的onDetachedFromWindow方法，确保所有资源被正确清理
+     */
     @Override
     protected void onDetachedFromWindow() {
         if (focusAnimator != null) {
@@ -208,7 +236,10 @@ public class FocusSunView extends View {
         super.onDetachedFromWindow();
     }
 
-    // 绘制
+    /**
+     * 重写onDraw方法，用于自定义视图的绘制逻辑
+     * @param canvas 画布对象，用于绘制视图
+     */
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
@@ -279,7 +310,13 @@ public class FocusSunView extends View {
         }
         canvas.restore();
     }
-    // 测量
+
+    /**
+     * 处理触摸屏事件的方法
+     *
+     * @param event MotionEvent对象，包含触摸事件的信息
+     * @return 总是返回true，表示事件已被处理
+     */
     @SuppressLint("ClickableViewAccessibility")
     @Override
     public boolean onTouchEvent(MotionEvent event) {

@@ -13,7 +13,6 @@ import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
@@ -91,104 +90,120 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
+// 相机界面
 public class CameraActivity extends AppCompatActivity implements View.OnTouchListener {
 
-    private static CameraActivity myapp = null;
-    private static final int DISTANCE_LIMIT = 50; // 距离阈值
-    private static final int VELOCITY_THRESHOLD = 500; // 速度阈值;
-
-    private AutoFitTextureView mTextureView = null;
-    private FrameLayout mRootLayout = null;
-    private static CustomViewL mCustomViewL = null;
-    private GestureDetector mGestureDetector = null;
-    private DisplayMetrics mDisplayMetrics = null;
+    private static CameraActivity myapp = null;                                     // 单例
+    private static final int DISTANCE_LIMIT = 50;                                   // 距离阈值
+    private static final int VELOCITY_THRESHOLD = 500;                              // 速度阈值;
+    private AutoFitTextureView mTextureView = null;                                 // 用于显示相机预览
+    private FrameLayout mRootLayout = null;                                         // 根布局
+    private static CustomViewL mCustomViewL = null;                                 // 用与模式切换
+    private GestureDetector mGestureDetector = null;                                // 手势监听
+    private DisplayMetrics mDisplayMetrics = null;                                  // 屏幕宽高
     //按键定义
     private ImageView record, switch_camera, capture, mPictureIv, falsh_switch,Load;
+                                                                                    // 图片按键
     private TextView switch_frame, void_quality, timerText, option1, option2, option3, option4,option5;
-    private FocusSunView focusSunView;
-    private LinearLayout Choose,Choose2;
-    private RelativeLayout Title;
-    private int screenWidth = 0;
-    private int screenHeight = 0;
-    private String cameraId = "0";
+                                                                                    // 文字按钮
+    private FocusSunView focusSunView;                                              // 焦点光圈
+    private LinearLayout Choose,Choose2;                                            // 画幅选择
+    private RelativeLayout Title;                                                   // 标题
+    private int screenWidth = 0;                                                    // 屏幕宽
+    private int screenHeight = 0;                                                   // 屏幕高
+    private String cameraId = "0";                                                  // 摄像头ID
     //相机操作变量
-    List<Surface> surfaces;
-    private Size previewSize = null;
-    private CameraDevice mCameraDevice = null;
-    SurfaceTexture texture;
-    private Handler handler;
-    private Handler handler2;
-    private boolean Handleding=true;
-    private ImageReader mImageReader;
-    private MediaRecorder mMediaRecorder;
-    private CameraCaptureSession captureSession;
-    private Camera2Proxy mCameraProxy;
-    private float mOldDistance;
-    private CaptureRequest mPreviewRequest;
-    CaptureRequest.Builder previewRequestBuilder;
-    CaptureRequest.Builder recordvideoRequestBuilder;
-    CameraCharacteristics characteristics;
-    public Context mContext;
-    private boolean isRecording = false;
-    String Previous_recorderPath, newroidPath;
-    String recorderPath, current;
-    boolean isRunning = false;
-    File previousFile = null;
-    private int seconds = 0;
-    int colorState=0;
-    Runnable runnable;
-    private short mFlashMode = 3;
-    private CameraCaptureSession.CaptureCallback mPreCaptureCallback;
-    private PopupWindow popupWindow;
-    public MediaActionSound mMediaActionSound;
-    public Animation btnAnimation,LoadAnimation;
-    static Size largest=new Size(4,3);
-    boolean isCapture =  false;
-    boolean isCaptureing=true;
-    static boolean isRecord4 = false;
-    boolean isRecord5 = false;
-    boolean isRecordflag=false;
-    boolean isLayout = false;
-    boolean isClickFocus = false;
-    boolean isSwichCamera=false;
-    boolean isAnimator=true;
-    boolean isOption=false;
-    boolean isLayoutSwich=false;
-    boolean isRecordingflg=false;
-    boolean isStopRecord=false;
-    boolean isCaptureingflg =false;
-    boolean isClickBitmap = false;
-    boolean isRightTransverse=false;
-    boolean isLeftTransverse=false;
-    boolean isinversion=false;
-    boolean Strongflash=false;
-    View maskView;
-    View maskViewbuf;
-    ViewGroup parentbuf;
-    CameraCaptureSession.StateCallback PreCaptureCallback;
-    private ValueAnimator currentAnimator;
+    List<Surface> surfaces;                                                         // 用于创建预览和拍照的surface
+    private Size previewSize = null;                                                // 预览尺寸
+    private CameraDevice mCameraDevice = null;                                      // 摄像头设备
+    SurfaceTexture texture;                                                         // 用于显示预览的surfaceTexture
+    private Handler handler;                                                        // 用于控制线程
+    private Handler handler2;                                                       // 用于控制线程
+    private boolean Handleding=true;                                                // 是否处理中
+    private ImageReader mImageReader;                                               // 用于拍照
+    private MediaRecorder mMediaRecorder;                                           // 用于录制视频
+    private CameraCaptureSession captureSession;                                    // 用于控制预览和拍照
+    private Camera2Proxy mCameraProxy;                                              // 相机代理
+    private float mOldDistance;                                                     // 用于计算双指距离
+    private CaptureRequest mPreviewRequest;                                         // 用于控制预览
+    CaptureRequest.Builder previewRequestBuilder;                                   // 用于控制预览
+    CaptureRequest.Builder recordvideoRequestBuilder;                               // 用于控制录制视频
+    CameraCharacteristics characteristics;                                          // 摄像头参数
+    private boolean isRecording = false;                                            // 是否录制中
+    String Previous_recorderPath, newroidPath;                                      // 录制视频路径
+    boolean isRunning = false;                                                      // 是否运行
+    File previousFile = null;                                                       // 录制视频文件
+    private int seconds = 0;                                                        // 录制时间
+    int colorState=0;                                                               // 颜色状态
+    Runnable runnable;                                                              // 录制视频
+    private short mFlashMode = 3;                                                   // 闪光灯状态
+    private CameraCaptureSession.CaptureCallback mPreCaptureCallback;               // 拍照回调
+    public MediaActionSound mMediaActionSound;                                      // 拍照声音
+    public Animation btnAnimation,LoadAnimation;                                    // 动画
+    static Size largest=new Size(4,3);                                 // 默认画幅
+    boolean isCapture =  false;                                                     // 是否拍照中
+    boolean isCaptureing=true;                                                      // 是否拍照中
+    static boolean isRecord4 = false;                                               // 是否录制中
+    boolean isRecord5 = false;                                                      // 是否录制中
+    boolean isRecordflag=false;                                                     // 是否录制中
+    boolean isLayout = false;                                                       // 是否布局中
+    boolean isClickFocus = false;                                                   // 是否点击聚焦
+    boolean isSwichCamera=false;                                                    // 是否切换摄像头
+    boolean isAnimator=true;                                                        // 是否动画中
+    boolean isOption=false;                                                         // 是否选项中
+    boolean isLayoutSwich=false;                                                    // 是否切换摄像头中
+    boolean isRecordingflg=false;                                                   // 是否录制中
+    boolean isStopRecord=false;                                                     // 是否停止录制
+    boolean isCaptureingflg =false;                                                 // 是否拍照中
+    boolean isClickBitmap = false;                                                  // 是否点击图片
+    boolean isRightTransverse=false;                                                // 是否右转
+    boolean isLeftTransverse=false;                                                 // 是否左转
+    boolean isinversion=false;                                                      // 是否翻转
+    boolean Strongflash=false;                                                      // 强光
+    View maskView;                                                                  // 遮罩
+    View maskViewbuf;                                                               // 遮罩
+    ViewGroup parentbuf;                                                            // 父容器
+    CameraCaptureSession.StateCallback PreCaptureCallback;                          // 拍照回调
+    private ValueAnimator currentAnimator;                                          // 动画
     // 初始化 SensorManager 和传感器监听器
-    private SensorManager sensorManager;
+    private SensorManager sensorManager;                                            // 传感器管理器
+
+
+
     private SensorEventListener sensorEventListener = new SensorEventListener() {
-                @Override
+        /**
+         * 当传感器数据发生变化时调用此方法
+         * @param event 传感器事件，包含传感器类型和传感器值等信息
+         */
+        @Override
                 public void onSensorChanged(SensorEvent event) {
                     if (event.sensor.getType() == Sensor.TYPE_ORIENTATION) {
                         float azimuth = event.values[0];  // 方位角
                         float pitch = event.values[1];    // 倾斜角
                         float roll = event.values[2];     // 滚动角
 
-                        // 执行其他逻辑
+                        // 处理方向变化的逻辑
                         handleOrientationChange(azimuth, pitch, roll);
                     }
                 }
 
+                /**
+                 * 当传感器的准确性发生变化时调用此方法
+                 * @param sensor 发生变化的传感器
+                 * @param accuracy 传感器的准确度
+                 */
                 @Override
                 public void onAccuracyChanged(Sensor sensor, int accuracy) {
                     // 准确度变化时的处理
                 }
             };
-    // 处理方向变化的逻辑
-
+    /**
+     * 处理设备方向变化
+     *
+     * @param azimuth   设备的水平方向度数
+     * @param pitch     设备的俯仰角度
+     * @param roll      设备的滚动角度
+     */
     private void handleOrientationChange(float azimuth, float pitch, float roll) {
         // 根据方向变化执行其他逻辑
         Log.d("--Orientation--", "Azimuth: " + azimuth + ", Pitch: " + pitch + ", Roll: " + roll);
@@ -275,19 +290,21 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
     }
 
-
-
-
+    /**
+     * 初始化活动 (Activity)
+     * 此方法在活动首次创建时调用，负责设置活动的布局、申请权限、初始化变量和视图，以及设置监听器
+     * @param savedInstanceState 如果活动之前被销毁过且之后又重新创建，则此参数为上次销毁前的保存状态，否则为null
+     */
     @SuppressLint("MissingInflatedId")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        initScreen();//初始化布局
-        initRequestPermissions(); // 申请摄像头权限
-        initVariable();//初始化变量
-        initCustomViewL(); // 初始化自定义View
-        initClickListener(); // 初始化点击监听器
-        initTouchListener();//初始化触摸监听器
+        initScreen();                                                       //初始化布局
+        initRequestPermissions();                                           // 申请摄像头权限
+        initVariable();                                                     //初始化变量
+        initCustomViewL();                                                  // 初始化自定义View
+        initClickListener();                                                // 初始化点击监听器
+        initTouchListener();                                                //初始化触摸监听器
     }
 
     /**
@@ -297,7 +314,6 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     private void initTouchListener() {
         mTextureView.setOnTouchListener(new View.OnTouchListener() {
             private boolean isZooming = false; // 标记是否正在缩放
-
             @Override
             public boolean onTouch(View v, MotionEvent event) {
                 // 获取手指的数量
@@ -318,7 +334,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                         if (isZooming) {
                             float newDistance = getFingerSpacing(event);
                             if (newDistance > mOldDistance) {
-                                if(previewRequestBuilder!=null&& recordvideoRequestBuilder!=null) {
+                                if(previewRequestBuilder!=null) {
                                     if (colorState == 1 && isRecordingflg) {
 
                                         mCameraProxy.handleZoom(true, mCameraDevice, characteristics, recordvideoRequestBuilder, mPreviewRequest, captureSession);
@@ -327,7 +343,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                                     }
                                 }
                             } else if (newDistance < mOldDistance) {
-                                if(previewRequestBuilder!=null&& recordvideoRequestBuilder!=null) {
+                                if(previewRequestBuilder!=null) {
                                     if (colorState == 1 && isRecordingflg) {
 
                                         mCameraProxy.handleZoom(false, mCameraDevice, characteristics, recordvideoRequestBuilder, mPreviewRequest, captureSession);
@@ -356,7 +372,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                         if (!isZooming && pointerCount == 1) {
                             // 点击对焦
                             // Toast.makeText(getApplicationContext(), "单指按下", Toast.LENGTH_SHORT).show();
-                            if (previewRequestBuilder!=null&& recordvideoRequestBuilder!=null) {
+                            if (previewRequestBuilder!=null) {
                                 if (colorState == 1 && isRecordingflg) {
                                     // mCameraProxy.handleZoom(false, mCameraDevice, characteristics, recordvideoRequestBuilder, mPreviewRequest, captureSession);
                                     mCameraProxy.focusOnPoint((int) event.getX(), (int) event.getY(), mTextureView.getWidth(), mTextureView.getHeight(), mCameraDevice, recordvideoRequestBuilder, captureSession, previewSize, mTextureView);
@@ -404,8 +420,14 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             }
         });
     }
-
-
+    /**
+     * 开始相机预览
+     *
+     * 本方法用于启动相机的预览功能，它通过设置重复请求的方式来持续进行预览
+     * 如果captureSession或previewRequestBuilder任一为null，则不进行任何操作
+     * 在正常情况下，将重复发送预览请求以实现持续预览的效果
+     * 若遇到CameraAccessException异常，则输出异常信息
+     */
     public void startPreview() {
 
         if (captureSession == null || previewRequestBuilder == null) {
@@ -419,6 +441,13 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         }
     }
 
+    /**
+     * 停止相机预览
+     *
+     * 本方法旨在停止相机的预览功能它通过停止重复请求来实现预览的停止
+     * 如果会话或预览请求构建器为空，则不执行任何操作这确保了在必要组件不可用时，
+     * 不会尝试停止预览此外，本方法处理可能的相机访问异常，确保异常情况下不会影响应用的稳定性
+     */
     public void stopPreview() {
        // Log.v(TAG, "stopPreview");
         if (captureSession == null || previewRequestBuilder == null) {
@@ -432,15 +461,11 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         }
     }
 
-
+    // 重写onResume方法
     @Override
     public void onResume() {
         super.onResume();
-        // Toast.makeText(MainActivity.this, "onResume", Toast.LENGTH_SHORT);
-        // 启动后台线程，用于执行回调中的代码
-        // startBackgroundThread();
-        // 如果Activity是从stop/pause回来，TextureView是OK的，只需要重新开启camera就行
-
+        // 注册方向传感器
         sensorManager.registerListener(sensorEventListener, sensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION), SensorManager.SENSOR_DELAY_NORMAL);
         if(isClickBitmap)
         {
@@ -457,6 +482,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             }
             isClickBitmap = false;
         }
+        // 打开相机
         if (mTextureView.isAvailable()) {
             openCamera(mTextureView.getWidth(), mTextureView.getHeight());
         } else {
@@ -465,6 +491,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         }
     }
 
+    // 重写onPause方法
     @Override
     public void onPause() {
         // Toast.makeText(MainActivity.this, "onPause", Toast.LENGTH_SHORT);
@@ -492,6 +519,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         sensorManager.unregisterListener(sensorEventListener);
     }
 
+    // 重写onStop方法
     @Override
     public void onStop() {
         Log.d("--onDestroy--", "onDestroy");
@@ -502,6 +530,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         super.onStop();
     }
 
+    // 重写onDestroy方法
     @Override
     public void onDestroy() {
         Log.d("--onDestroy--", "onDestroy");
@@ -521,9 +550,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     }
 
     /*
-    初始化函数
+    初始化屏幕
      */
-    // 初始化屏幕
     private void initScreen() {
         int flags = View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                 | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
@@ -542,27 +570,36 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             return insets;
         });
     }
+
     // 初始化变量
     private void initVariable() {
-
-        // 绑定TextureView
-        mTextureView = findViewById(R.id.texture); // 绑定TextureView
-        mTextureView.setSurfaceTextureListener(mSurfaceTextureListener);
-        // 绑定根布局
-        mRootLayout = findViewById(R.id.root);
+        mTextureView = findViewById(R.id.texture);                              // 绑定TextureView
+        mTextureView.setSurfaceTextureListener(mSurfaceTextureListener);        // 绑定TextureView的监听器
+        mRootLayout = findViewById(R.id.root);                                  // 绑定根布局
         //mRootLayout.setOnTouchListener(this);
-        // 绑定计时器
-        timerText = findViewById(R.id.timer_text);
-        // 绑定自定义View
-        mCustomViewL = findViewById(R.id.mCustomView);
-        // 初始化点击监听器
-        record = findViewById(R.id.recordvideo);
-        switch_camera = findViewById(R.id.switch_camera);
-        capture = findViewById(R.id.capture);
-        switch_frame = findViewById(R.id.frame_switch);
-        void_quality = findViewById(R.id.void_quality);
-        falsh_switch = findViewById(R.id.falsh_switch);
-        Load=findViewById(R.id.Load);
+        timerText = findViewById(R.id.timer_text);                              // 绑定计时器
+        mCustomViewL = findViewById(R.id.mCustomView);                          // 绑定自定义View
+        record = findViewById(R.id.recordvideo);                                // 绑定录制按钮
+        switch_camera = findViewById(R.id.switch_camera);                       // 绑定切换摄像头按钮
+        capture = findViewById(R.id.capture);                                   // 绑定拍照按钮
+        switch_frame = findViewById(R.id.frame_switch);                         // 绑定切换画幅按钮
+        void_quality = findViewById(R.id.void_quality);                         // 绑定清晰度切换按钮
+        falsh_switch = findViewById(R.id.falsh_switch);                         // 绑定闪光灯切换按钮
+        Load=findViewById(R.id.Load);                                           // 绑定加载按钮
+        mPictureIv = findViewById(R.id.picture_iv);                             // 绑定图片显示控件
+        focusSunView = findViewById(R.id.focus_sun_view);                        // 初始化焦点光圈
+        Choose = findViewById(R.id.Choose);                                      // 绑定顶部画幅切换选择栏
+        Choose2=findViewById(R.id.Choose2);                                      // 绑定顶部部质量切换选择栏
+        Title = findViewById(R.id.title);                                        // 绑定顶部标题栏
+
+        //初始化各个画幅切换按钮
+        option1 = findViewById(R.id.option1);
+        option2 = findViewById(R.id.option2);
+        option3 = findViewById(R.id.option3);
+        option4= findViewById(R.id.option4);
+        option5 = findViewById(R.id.option5);
+
+        // 禁用按钮
         record.setEnabled(false);
         capture.setEnabled(false);
         switch_frame.setEnabled(false);
@@ -570,7 +607,10 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         falsh_switch.setEnabled(false);
         switch_camera.setEnabled(false);
         Load.setEnabled(false);
-
+        option2.setEnabled(false);
+        option2.setTextColor(Color.YELLOW);
+        option5.setEnabled(false);
+        option5.setTextColor(Color.YELLOW);
 
         // 获取屏幕宽高
         mDisplayMetrics = new DisplayMetrics();
@@ -578,15 +618,16 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         screenWidth = mDisplayMetrics.widthPixels;
         screenHeight = mDisplayMetrics.heightPixels;
         Log.d("--Screen--", "width:" + screenWidth + " height:" + screenHeight);
-        //相机操作
-        surfaces = new ArrayList<>();
-        // UI线程的Handler
-        handler = new Handler(Looper.getMainLooper());
-        handler2= new Handler(Looper.getMainLooper());
 
-        mCameraProxy = new Camera2Proxy(this);
-        // 显示最近
-        mPictureIv = findViewById(R.id.picture_iv);
+
+        surfaces = new ArrayList<>();                                       // 用于存储Surface
+        handler = new Handler(Looper.getMainLooper());                      // UI线程的Handler
+        handler2= new Handler(Looper.getMainLooper());                      // 后台线程的Handler
+        mCameraProxy = new Camera2Proxy(this);                       // 创建Camera2Proxy对象
+        mMediaActionSound = new MediaActionSound();                         // 拍照声音
+        Previous_recorderPath = null;                                       // 用于存储上一次录制的视频路径
+        newroidPath = null;                                                 // 用于存储当前录制的视频路径
+
        // 显示最近一次拍照的图片
         Bitmap bitmap=getLatestThumbBitmap(this);
         if(bitmap==null)
@@ -598,46 +639,24 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             mPictureIv.setImageBitmap(bitmap);
             mPictureIv.setEnabled(true);
         }
-        // 初始化焦点光圈
-        focusSunView = findViewById(R.id.focus_sun_view);
-        // 设置曝光范围
-        focusSunView.setExposureLimit(0.5f, -0.5f);
 
-        Previous_recorderPath = null;
-        newroidPath = null;
-        Choose = findViewById(R.id.Choose);
-        Choose2=findViewById(R.id.Choose2);
-        Title = findViewById(R.id.title);
-        option1 = findViewById(R.id.option1);
-        option2 = findViewById(R.id.option2);
-        option3 = findViewById(R.id.option3);
-        option4= findViewById(R.id.option4);
-        option5 = findViewById(R.id.option5);
-        option2.setEnabled(false);
-        option2.setTextColor(Color.YELLOW);
-        option5.setEnabled(false);
-        option5.setTextColor(Color.YELLOW);
-        //拍照声音
-        mMediaActionSound = new MediaActionSound();
-        //按钮动画
-        btnAnimation = AnimationUtils.loadAnimation(this, R.anim.btn_anim);
-        LoadAnimation=AnimationUtils.loadAnimation(this, R.anim.dialog_loading);
-        recordTouchListener();
-        captureTouchListener();
-        // 初始化 SensorManager
-        // 注册传感器监听器
-        sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+        focusSunView.setExposureLimit(0.5f, -0.5f);         // 设置曝光范围
+        // 设置焦点光圈的曝光值监听器
+        focusSunView.setOnExposureChangeListener(new FocusSunView.OnExposureChangeListener() {
+            @Override
+            public void onExposureChangeListener(float exposure) {
+                // 应用曝光值到 Camera2 API
+                applyExposure(exposure);
+            }
+        });
+        btnAnimation = AnimationUtils.loadAnimation(this, R.anim.btn_anim);          // 加载动画
+        LoadAnimation=AnimationUtils.loadAnimation(this, R.anim.dialog_loading);     // 加载加载动画
+        recordTouchListener();                                                              // 录制按钮动画
+        captureTouchListener();                                                             // 拍照按钮动画
+        sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);                   // 获取传感器管理器
         sensorManager.registerListener(sensorEventListener, sensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION), SensorManager.SENSOR_DELAY_NORMAL);
-
+                                                                                            // 注册传感器监听器
     }
-
-
-
-//    public static CameraActivity getInstance() {
-//        return myapp;
-//    }
-
-
     // 初始化自定义View
     @SuppressLint("ClickableViewAccessibility")
     private void initCustomViewL() {
@@ -822,7 +841,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 SwichFlash();
             }
         });
-
+        //1:1
         option1.setOnClickListener(v -> {
             if (v.getId() == R.id.option1) {
                 mCameraProxy.mZoom=0;
@@ -842,6 +861,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             }
         });
 
+        // 4:3
         option2.setOnClickListener(v -> {
             if (v.getId() == R.id.option2) {
                 option1.setEnabled(true);
@@ -860,6 +880,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             }
         });
 
+        // 16:9
         option3.setOnClickListener(v -> {
             if (v.getId() == R.id.option3) {
                 option1.setEnabled(true);
@@ -877,7 +898,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 switchCameraWithMaskAnimation();
             }
         });
-
+        //480p
         option4.setOnClickListener(v -> {
            if (v.getId() == R.id.option4)
            {
@@ -895,7 +916,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                switchCameraWithMaskAnimation();
            }
         });
-
+        //720p
         option5.setOnClickListener(v -> {
             if (v.getId() == R.id.option5)
             {
@@ -914,16 +935,12 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 switchCameraWithMaskAnimation();
             }
         });
-
-        focusSunView.setOnExposureChangeListener(new FocusSunView.OnExposureChangeListener() {
-            @Override
-            public void onExposureChangeListener(float exposure) {
-                // 应用曝光值到 Camera2 API
-                applyExposure(exposure);
-            }
-        });
     }
 
+    /**
+     * 设置记录按钮的触摸监听器
+     * 此方法用于处理记录按钮的触摸事件，主要包括按下时的处理逻辑
+     */
     @SuppressLint("ClickableViewAccessibility")
     private void recordTouchListener() {
         record.setOnTouchListener(new View.OnTouchListener() {
@@ -948,12 +965,21 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         });
     }
 
+    /**
+     * 切换水质检测的可见性状态
+     *
+     * 此方法用于在用户界面中切换显示状态，主要是隐藏标题（Title）并显示选择项（Choose2）
+     * 它通过修改视图的可见性属性来实现这一点
+     */
     private void SwichQuality() {
         Title.setVisibility(View.GONE);
         Choose2.setVisibility(View.VISIBLE);
     }
 
-    // 拍照动画
+    /**
+     * 设置触摸监听器以捕捉特定的触摸事件
+     * 此方法主要用于为视图设置一个触摸事件监听器，以便在用户触摸屏幕时执行特定操作
+     */
     @SuppressLint("ClickableViewAccessibility")
     private void captureTouchListener() {
         capture.setOnTouchListener(new View.OnTouchListener() {
@@ -972,14 +998,20 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         );
     }
 
-
-
-    // 切换帧
+    /**
+     * 切换界面布局的显示状态
+     * 此方法用于在界面中隐藏标题栏并显示选择栏，通常在某种操作模式切换时调用此方法
+     * 以引导用户注意力从标题栏转移到选择栏
+     */
     private void SwichFrame() {
         Title.setVisibility(View.GONE);
         Choose.setVisibility(View.VISIBLE);
     }
 
+    /**
+     * 切换闪光灯模式
+     * 通过改变闪光灯模式状态，控制闪光灯的行为
+     */
     private void SwichFlash() {
 
         switch (mFlashMode) {
@@ -1051,21 +1083,15 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         }
     }
 
-
-    private void setFlashMode(int mode) {
-        if (previewRequestBuilder == null || captureSession == null) {
-            // Log.e(TAG, "Capture request builder or capture session is not initialized.");
-            return;
-        }
-
-        try {
-            previewRequestBuilder.set(CaptureRequest.FLASH_MODE, mode);
-            // 更新 CaptureSession
-            captureSession.setRepeatingRequest(previewRequestBuilder.build(), null /* Session state callback */, null /* Handler */);
-        } catch (CameraAccessException e) {
-        }
-    }
-
+    /**
+     * 停止视频录制
+     *
+     * 本方法负责停止视频录制，它通过停止MediaRecorder来实现这一点
+     * 如果停止操作失败，将打印出异常信息
+     * 最后，它将释放与MediaRecorder相关的资源，并关闭相机预览会话
+     *
+     * @throws CameraAccessException 当访问相机设备时发生错误
+     */
     private void stopRecordingVideo() throws CameraAccessException {
         try {
             mMediaRecorder.stop();
@@ -1092,7 +1118,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         mPictureIv.setVisibility(View.VISIBLE);
         void_quality.setVisibility(View.VISIBLE);
         mCustomViewL.setVisibility(View.VISIBLE);
-//isStopRecord=true;
+        //isStopRecord=true;
         //switchCameraWithMaskAnimation();
         // 停止计时器
         handler.removeCallbacks(runnable);
@@ -1109,6 +1135,14 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         createCaptureSession(mCameraDevice);
     }
 
+    /**
+     * 初始化视频录制
+     *
+     * 本方法主要用于设置和初始化相机设备，以进行视频录制它涉及创建捕获请求，
+     * 设置预览和录制的Surface，以及配置相机参数，如对焦和曝光模式
+     *
+     * @throws CameraAccessException 如果访问相机设备时遇到错误
+     */
     private void startRecordingVideoinit() throws CameraAccessException {
         // 更新预览请求
         recordvideoRequestBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_RECORD);
@@ -1131,6 +1165,13 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         // 更新捕获会话
         captureSession.setRepeatingRequest(recordvideoRequestBuilder.build(), null, null);
     }
+
+    /**
+     * 开始录制视频
+     *
+     * 此方法初始化视频录制过程，启动MediaRecorder，并配置用户界面元素以反映录制状态
+     * 它还启动了一个计时器线程，用于在录制开始后进行倒计时
+     */
     private void startRecordingVideo() {
         try {
             startRecordingVideoinit();
@@ -1163,7 +1204,10 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         }
     }
 
-    // 启动计时器
+    /**
+     * 启动计时器
+     * 当计时器启动时，会创建一个可运行对象，用于每秒更新计时器的显示，并在计时开始后启用记录功能
+     */
     private void startTimer() {
         runnable = new Runnable() {
             @Override
@@ -1182,6 +1226,10 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         handler.post(runnable);
     }
 
+    /**
+     * 切换摄像头时带有遮罩动画的方法
+     * 该方法用于在切换摄像头或执行某些操作时，通过动画效果显示或隐藏一个黑色遮罩视图
+     */
     @SuppressLint("CutPasteId")
     private void switchCameraWithMaskAnimation() {
         // 确保没有正在进行的动画
@@ -1266,6 +1314,10 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         }
     }
 
+    /**
+     * 取消当前正在运行的动画器
+     * 如果当前动画器存在且正在运行，该方法将取消动画器并将其设置为null
+     */
     private void cancelCurrentAnimator() {
         if (currentAnimator != null && currentAnimator.isRunning()) {
             currentAnimator.cancel();
@@ -1273,6 +1325,11 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         }
     }
 
+    /**
+     * 开始记录加载过程，并在延迟后移除蒙版
+     *
+     * @param maskView 蒙版视图，用于在加载时遮挡界面的部分区域
+     */
     private void RecordLoading(View maskView)  {
         isStopRecord=false;
         Load.setAlpha(1f);
@@ -1296,6 +1353,11 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         handler2.postDelayed(removeMaskRunnable, 800); // 延迟 870 毫秒
     }
 
+    /**
+     * 切换摄像头布局
+     * 此方法主要用于在打开相机时切换摄像头，并在界面上反映相应的状态变化
+     * @param maskView 用于遮罩的视图，在摄像头切换后将被移除
+     */
     private void Swichlayout(final View maskView) {
         openCamera(mTextureView.getWidth(), mTextureView.getHeight());
         if(isLayout)
@@ -1331,6 +1393,13 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         handler2.postDelayed(removeMaskRunnable, 650); // 延迟 870 毫秒
     }
 
+    /**
+     * 切换摄像头并移除蒙版视图
+     * 此方法首先打开相机，并禁用一些交互元素以确保摄像头切换期间的用户体验
+     * 在切换完成后，通过延迟执行的线程来恢复这些交互元素的可用性
+     *
+     * @param maskView 蒙版视图，用于在摄像头切换期间遮挡界面的一部分
+     */
     private void SwitchFrame(final View maskView) {
         openCamera(mTextureView.getWidth(), mTextureView.getHeight());
         isOption=false;
@@ -1364,6 +1433,14 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         handler2.postDelayed(removeMaskRunnable, 650); // 延迟 870 毫秒
     }
 
+    /**
+     * 切换摄像头操作
+     * 此方法用于在后置摄像头和前置摄像头之间进行切换
+     * 它会关闭当前摄像头并打开另一个摄像头，根据当前摄像头的ID来决定显示或隐藏闪光灯开关
+     * 在切换摄像头后，会移除界面中的遮罩视图，并恢复部分视图的交互能力
+     *
+     * @param maskView 用于遮罩的视图，在切换摄像头后需要移除
+     */
     private void SwichCamera(final View maskView) {
         cameraId = "1".equals(cameraId) ? "0" : "1";
         // 切换摄像头
@@ -1406,6 +1483,10 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         }
     }
 
+    /**
+     * 关闭相机设备
+     * 如果当前有相机设备实例，则关闭该设备并设置实例为null
+     */
     private void closeCamera() {
         if (mCameraDevice != null) {
             mCameraDevice.close();
@@ -1416,13 +1497,18 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     // 方向
     private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
 
+    // 方向
     static {
         ORIENTATIONS.append(Surface.ROTATION_0, 90);
         ORIENTATIONS.append(Surface.ROTATION_90, 0);
         ORIENTATIONS.append(Surface.ROTATION_180, 270);
         ORIENTATIONS.append(Surface.ROTATION_270, 180);
     }
-    // 拍照
+
+    /**
+     * 拍摄照片方法
+     * 该方法负责调用相机硬件，设置拍照参数，并捕获照片
+     */
     private void takePicture() {
         try {
             if (mFlashMode == 2) {
@@ -1483,7 +1569,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     */
     private static class MyGestureDetectorListener implements GestureDetector.OnGestureListener {
 
-        //
+        // 按下
         @Override
         public boolean onDown(MotionEvent e) {
             Log.d("--CameraActivity--", "onDown");
@@ -1491,13 +1577,13 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             return true;
         }
 
-        //
+        // 按下后松开
         @Override
         public void onShowPress(MotionEvent e) {
             // 不做任何操作
         }
 
-        //
+        // 单击
         @Override
         public boolean onSingleTapUp(MotionEvent e) {
             return false;
@@ -1523,27 +1609,34 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                     }
                 }
             }
-
             return true;
         }
 
-        //
+        // 长按
         @Override
         public void onLongPress(@NonNull MotionEvent e) {
             // 不做任何操作
         }
-
+        // 快速滑动
         @Override
         public boolean onFling(@Nullable MotionEvent e1, @NonNull MotionEvent e2, float velocityX, float velocityY) {
             return false;
         }
     }
 
+    // 触摸监听
     @Override
     public boolean onTouch(View v, MotionEvent event) {
         return mGestureDetector.onTouchEvent(event);
     }
 
+    /**
+     * 切换布局状态
+     * 根据传入的颜色状态值，切换相机界面的布局，以适应不同的拍摄模式
+     * 此方法主要用于控制相机界面元素的可见性与启用状态，并调整相机参数
+     *
+     * @param mcolorState 颜色状态值，决定布局切换的模式
+     */
     void Layout_Switch(int mcolorState) {
         colorState=mcolorState;
         record.setVisibility(View.GONE);
@@ -1668,11 +1761,14 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         }
     }
 
-
-    /*
-    操作相机函数
+    /**
+     * 打开摄像头并调整纹理视图以适应屏幕大小
+     * 在打开摄像头之前，初始化纹理视图并停止任何正在进行的捕获会话
+     * 此方法还检查是否已授权使用摄像头权限，并在没有授权的情况下阻止摄像头的打开
+     *
+     * @param width  纹理视图的宽度，用于调整视图大小
+     * @param height 纹理视图的高度，用于调整视图大小
      */
-    //打开相机
     private void openCamera(int width, int height) {
 
         initAutoFitTextureView(mTextureView, mTextureView.getWidth(), mTextureView.getHeight());
@@ -1691,6 +1787,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         }
     }
 
+    // 初始化纹理视图以适应屏幕大小
     private void initAutoFitTextureView(AutoFitTextureView textureView, int width, int height) {
         // 确保 surfaces 集合已被初始化
         if (surfaces == null) {
@@ -1811,6 +1908,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
         return filteredSizes;
     }
+
+    // 选择最合适的尺寸
     private List<Size> filterFULLSizesByAspectRatio(List<Size> outputSizes, double targetAspectRatio) {
         List<Size> filteredSizes = new ArrayList<>();
 
@@ -1849,6 +1948,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         return filteredSizes;
     }
 
+    // 根据屏幕尺寸和预览尺寸，计算出最佳的预览尺寸
     private void Position_frame(Size previewSize) {
         if(largest.getWidth()==4||largest.getWidth()==16) {
             // 获取 FrameLayout.LayoutParams
@@ -1963,6 +2063,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         }
     }
 
+    // 选择合适的预览尺寸
     private static Size chooseOptimalSize(Size[] choices, int width, int height, Size aspectRatio,String flg) {
         // 收集摄像头支持的打开预览Surface的分辨率
         List<Size> bigEnough = new ArrayList<>();
@@ -1982,7 +2083,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             }
         }
 
-// 如果找到多个预览尺寸，获取其中面积第二小的。
+        // 如果找到多个预览尺寸，获取其中面积第二小的。
         if (!bigEnough.isEmpty()) {
             // 使用自定义比较器按面积从小到大排序
             List<Size> sortedSizes = new ArrayList<>(bigEnough);
@@ -2021,7 +2122,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         }
     }
 
-
+    // 异步创建预览会话
     private void createCaptureSessionAsync() {
         if (!isRunning) {
             isRunning = true;
@@ -2039,14 +2140,14 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             });
         }
     }
-
+    // 停止预览会话
     private void stopCaptureSessionAsync() {
         if (isRunning) {
             isRunning = false;
             handler.removeCallbacksAndMessages(null);
         }
     }
-
+    // 创建预览会话
     private void createCaptureSession(CameraDevice cameraDevice) throws CameraAccessException {
 
         // 预览Surface
@@ -2137,6 +2238,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         }
     }
 
+    // 处理对焦状态
     private void process(TotalCaptureResult result) throws CameraAccessException {
         if (result == null) {
             Toast.makeText(this, "Result is null", Toast.LENGTH_SHORT).show();
@@ -2172,6 +2274,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         }
     }
 
+    // 图片数据可用
     private ImageReader.OnImageAvailableListener mImageReaderListener = reader -> {
         Image image = reader.acquireLatestImage();
         ByteBuffer buffer = image.getPlanes()[0].getBuffer();
@@ -2187,6 +2290,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
     };
 
+    // 保存图片到相册
     private void saveImageToGallery(byte[] data) {
         String fileName = "IMG_" + System.currentTimeMillis() + ".jpg";
         String filePath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).getAbsolutePath() + File.separator + fileName;
@@ -2267,6 +2371,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         }
     }
 
+    // 初始化录制
     private void initRecording() {
 
         String recorderPath = null;
@@ -2345,11 +2450,13 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         }
     }
 
+    // 判断是否为前置摄像头
     boolean isFrontCamera() {
         return cameraId.equals("1");
     }
 
 
+    // 获取旋转角度
     private int getRotationDegrees() {
         int rotation = this.getWindowManager().getDefaultDisplay().getRotation();
         switch (rotation) {
@@ -2375,6 +2482,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         return rotation;
     }
 
+    // 设置曝光度
     private void applyExposure(float exposure) {
         exposure=80*(exposure/9950)-40;
         Log.d("applyExposure", "applyExposure: " + exposure);

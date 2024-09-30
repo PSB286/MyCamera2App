@@ -20,6 +20,7 @@ import java.util.List;
  */
 public class CustomViewL extends LinearLayout {
 
+    // Activity
     private final CameraActivity mCameraActivity= (CameraActivity) getContext();
     // 日志标签
     private static final String TAG = "CustomViewL.TAG";
@@ -29,9 +30,9 @@ public class CustomViewL extends LinearLayout {
     private int screenWidth;
     // 存储所有的 TextView
     List<TextView> textViews = new ArrayList<>();
-
+    // 当前索引
     int index=0;
-
+    // 颜色状态
     int colorState=0;
 
 
@@ -61,6 +62,7 @@ public class CustomViewL extends LinearLayout {
         screenWidth = wm.getDefaultDisplay().getWidth();
     }
 
+    // 重写 onLayout 方法，用于设置子视图的位置
     @Override
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
         Log.d(TAG, "onLayout ");
@@ -143,7 +145,7 @@ public class CustomViewL extends LinearLayout {
                     // 高度
                     LinearLayout.LayoutParams.WRAP_CONTENT);
             // 设置边距
-            params.setMargins(20, 0, 20, -400); // 增加左侧边距 20dp
+            params.setMargins(20, 0, 20, 190); // 增加左侧边距 20dp
             // 添加到布局中
             addView(textView, params);
 

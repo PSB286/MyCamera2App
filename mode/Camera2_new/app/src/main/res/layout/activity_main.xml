@@ -37,7 +37,7 @@
         <com.psb.myapplication.CustomViewL
             android:id="@+id/mCustomView"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
+            android:layout_height="220dp"
             android:layout_alignParentBottom="true"
             android:layout_marginBottom="0dp"
             android:background="#00000000"

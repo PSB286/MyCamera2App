@@ -14,6 +14,7 @@ public class AutoFitTextureView extends TextureView
     private int mRatioWidth = 0;
     private int mRatioHeight = 0;
 
+    //构造函数
     public AutoFitTextureView(Context context, AttributeSet attrs)
     {
         super(context, attrs);

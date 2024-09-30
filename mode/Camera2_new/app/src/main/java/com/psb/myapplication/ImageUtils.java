@@ -19,21 +19,20 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
+// 图片处理类
 public class ImageUtils {
+    private static final String TAG = "ImageUtils";                     // TAG
+    static Uri imageUri= null;                                          // 图片的uri
 
-    private static final String TAG = "ImageUtils";
-    @SuppressLint("StaticFieldLeak")
-    private static Context sContext = MyApp.getInstance();
-    //private static final CameraActivity myApp=CameraActivity.getInstance();
-    static Uri imageUri= null;
-    private static final String GALLERY_PATH = Environment.getExternalStoragePublicDirectory(Environment
-            .DIRECTORY_DCIM) + File.separator + "Camera";
-
-    private static final String[] STORE_IMAGES = {
-            MediaStore.Images.Thumbnails._ID,
-    };
-    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyyMMdd_HHmmss");
-
+    /**
+     * 旋转位图并可选择是否翻转和回收原位图
+     *
+     * @param source           源位图对象
+     * @param degree           旋转角度，以90度为单位
+     * @param flipHorizontal   是否沿水平轴翻转位图
+     * @param recycle          是否回收源位图资源
+     * @return                 返回旋转后的位图对象
+     */
     public static Bitmap rotateBitmap(Bitmap source, int degree, boolean flipHorizontal, boolean recycle) {
         if (degree == 0 && !flipHorizontal) {
             return source;
@@ -53,69 +52,14 @@ public class ImageUtils {
         return rotateBitmap;
     }
 
-    public static void saveImage(byte[] jpeg) {
-        String fileName = DATE_FORMAT.format(new Date(System.currentTimeMillis())) + ".jpg";
-        File outFile = new File(GALLERY_PATH, fileName);
-        Log.d(TAG, "saveImage. filepath: " + outFile.getAbsolutePath());
-        FileOutputStream os = null;
-        try {
-            os = new FileOutputStream(outFile);
-            os.write(jpeg);
-            os.flush();
-            os.close();
-            insertToDB(outFile.getAbsolutePath());
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            if (os != null) {
-                try {
-                    os.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-    }
-
-    public static void saveBitmap(Bitmap bitmap) {
-        // 保存图片
-        String fileName = DATE_FORMAT.format(new Date(System.currentTimeMillis())) + ".jpg";
-        // 保存路径
-        File outFile = new File(GALLERY_PATH, fileName);
-        // 保存文件
-        Log.d(TAG, "saveImage. filepath: " + outFile.getAbsolutePath());
-        // 创建文件输出流
-        FileOutputStream os = null;
-        try {
-            os = new FileOutputStream(outFile);
-            boolean success = bitmap.compress(Bitmap.CompressFormat.JPEG, 100, os);
-            Log.d(TAG, "saveBitmap: " + success);
-            if (success) {
-                insertToDB(outFile.getAbsolutePath());
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            if (os != null) {
-                try {
-                    os.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-    }
-
-    public static void insertToDB(String picturePath) {
-        ContentValues values = new ContentValues();
-        ContentResolver resolver = sContext.getContentResolver();
-        values.put(MediaStore.Images.ImageColumns.DATA, picturePath);
-        values.put(MediaStore.Images.ImageColumns.TITLE, picturePath.substring(picturePath.lastIndexOf("/") + 1));
-        values.put(MediaStore.Images.ImageColumns.DATE_TAKEN, System.currentTimeMillis());
-        values.put(MediaStore.Images.ImageColumns.MIME_TYPE, "image/jpeg");
-        resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
-    }
-
+    /**
+     * 获取最新的缩略图Bitmap
+     * 该方法会查询系统媒体库中最新的图片或视频，并返回其缩略图Bitmap
+     * 如果最新的媒体文件是视频，则返回视频的缩略图；如果是图片，则返回图片的缩略图
+     *
+     * @param sContext 上下文，用于查询媒体库
+     * @return 最新媒体文件的缩略图Bitmap，如果没有媒体文件则返回null
+     */
     public static Bitmap getLatestThumbBitmap(Context sContext) {
         Bitmap bitmap = null;
         long imagelatestTime = 0;
