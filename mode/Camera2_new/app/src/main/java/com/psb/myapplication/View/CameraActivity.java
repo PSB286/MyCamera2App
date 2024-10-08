@@ -147,7 +147,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     boolean isCapture =  false;                                                     // 是否拍照中
     boolean isCaptureing=true;                                                      // 是否拍照中
     static boolean isRecord4 = false;                                               // 是否录制中
-    boolean isRecord5 = false;                                                      // 是否录制中
+    static boolean isRecord5 = false;                                                      // 是否录制中
     boolean isRecordflag=false;                                                     // 是否录制中
     boolean isLayout = false;                                                       // 是否布局中
     boolean isClickFocus = false;                                                   // 是否点击聚焦
@@ -1846,31 +1846,34 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             //previewSize=new Size(1600, 720);
             if(largest.getWidth()==20&&isCapture) {
                 previewSize = chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class), width, height, largestFull,"FULL");
-                Log.d("--initAutoFitTextureView--", "previewSize:" + previewSize.getWidth()+" height:"+previewSize.getHeight());
+                Log.d("--initAutoFitTextureView1--", "previewSize:" + previewSize.getWidth()+" height:"+previewSize.getHeight());
                 mImageReader = ImageReader.newInstance(largestFull.getWidth(), largestFull.getHeight(), ImageFormat.JPEG, 2);
                 Log.d("--initAutoFitTextureView--", "isCapture");
             }
             if(largest.getWidth()==1&&isCapture)
             {
                 previewSize = chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class), width, height, largest1x1,"1:1");
-                Log.d("--initAutoFitTextureView--", "previewSize:" + previewSize.getWidth()+" height:"+previewSize.getHeight());
+                Log.d("--initAutoFitTextureView1--", "previewSize:" + previewSize.getWidth()+" height:"+previewSize.getHeight());
                 mImageReader = ImageReader.newInstance(largest1x1.getWidth(), largest1x1.getHeight(), ImageFormat.JPEG, 2);
             }
             if(isRecord4)
             {
                 previewSize = chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class), width, height, largest4x3,"4x3");
-                Log.d("--initAutoFitTextureView--", "previewSize:" + previewSize.getWidth()+" height:"+previewSize.getHeight());
+                Log.d("--initAutoFitTextureView2--", "previewSize:" + previewSize.getWidth()+" height:"+previewSize.getHeight());
             }
             if(isRecord5)
             {
-                previewSize = chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class), width, height, largest16x9,"16x9");
-                Log.d("--initAutoFitTextureView--", "previewSize:" + previewSize.getWidth()+" height:"+previewSize.getHeight());
+                if (largest16x9 != null) {
+                   // previewSize = chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class), width, height, largest16x9,"16x9");
+                    previewSize=new Size(1280,720);
+                }
+                Log.d("--initAutoFitTextureView2--", "previewSize:" + previewSize.getWidth()+" height:"+previewSize.getHeight());
             }
             Position_frame(previewSize);
             // 横竖屏判断
             int orientation = getResources().getConfiguration().orientation;
             if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
-                // 横屏
+                // 横屏s
                 textureView.setAspectRatio(previewSize.getWidth(), previewSize.getHeight());
             } else {
                 // 竖屏
@@ -2086,37 +2089,48 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             }
         }
 
+
+
         // 如果找到多个预览尺寸，获取其中面积第二小的。
         if (!bigEnough.isEmpty()) {
             // 使用自定义比较器按面积从小到大排序
             List<Size> sortedSizes = new ArrayList<>(bigEnough);
             Collections.sort(sortedSizes, new CompareSizesByArea());
 
+            Log.d("--chooseOptimalSize2--", "排序后：" + sortedSizes);
+
             if(Objects.equals(flg, "1x1"))
             // 返回面积第二小的尺寸
             {
-                Log.d("--chooseOptimalSize--", "1/1");
+                Log.d("--chooseOptimalSize2--", "1/1");
                 return sortedSizes.get(3);
             }
-            if(Objects.equals(flg, "4x3")&&!isRecord4)
+            else if(Objects.equals(flg, "4x3")&&!isRecord4)
             {
-                Log.d("--chooseOptimalSize--", "4/3");
+                Log.d("--chooseOptimalSize2--", "4/3");
                 return sortedSizes.get(7);
             }
-            if(Objects.equals(flg, "4x3")&&isRecord4)
+           else  if(Objects.equals(flg, "4x3")&&isRecord4)
             {
+                Log.d("--chooseOptimalSize2--", "4/3");
                 return sortedSizes.get(4);
             }
-            if(Objects.equals(flg, "FULL"))
+           else if(Objects.equals(flg, "16x9"))
             {
-                Log.d("--chooseOptimalSize--", "16/9");
+                Log.d("--chooseOptimalSize2--", "16/9"+sortedSizes.get(3));
+                return sortedSizes.get(3);
+            }
+            else if(Objects.equals(flg, "FULL"))
+            {
+                Log.d("--chooseOptimalSize2--", "FULL");
                 return sortedSizes.get(2);
             }
             else
             {
-                Log.d("--chooseOptimalSize--", "1/1");
-                return sortedSizes.get(3);
+                Log.d("--chooseOptimalSize2--", "1/1"+sortedSizes.get(1));
+                return sortedSizes.get(1);
             }
+
         } else {
             System.out.println("找不到合适的预览尺寸！！！");
             Log.d("--chooseOptimalSize--", "找不到合适的预览尺寸！！！");
