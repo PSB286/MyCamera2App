@@ -13,7 +13,7 @@
         android:layout_height="match_parent"
         android:layout_marginTop="0dp">
 
-        <com.psb.myapplication.AutoFitTextureView
+        <com.psb.myapplication.View.AutoFitTextureView
             android:id="@+id/texture"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -22,7 +22,7 @@
     </FrameLayout>
 
 
-    <com.psb.myapplication.FocusSunView
+    <com.psb.myapplication.View.FocusSunView
         android:id="@+id/focus_sun_view"
         android:layout_width="109dp"
         android:layout_height="124dp"
@@ -34,7 +34,7 @@
         android:layout_height="match_parent"
         android:background="#00000000">
 
-        <com.psb.myapplication.CustomViewL
+        <com.psb.myapplication.View.CustomViewL
             android:id="@+id/mCustomView"
             android:layout_width="match_parent"
             android:layout_height="220dp"
