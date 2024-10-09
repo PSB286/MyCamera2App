@@ -1,9 +1,5 @@
 package com.psb.myapplication.View;
 
-import com.psb.myapplication.R;
-import  com.psb.myapplication.Utils.ImageUtils;
-import  com.psb.myapplication.Utils.Camera2Proxy;
-
 import static com.psb.myapplication.Utils.ImageUtils.getLatestThumbBitmap;
 import static com.psb.myapplication.Utils.ImageUtils.rotateBitmap;
 import static java.lang.Thread.sleep;
@@ -69,7 +65,6 @@ import android.view.animation.AnimationUtils;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.PopupWindow;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -81,6 +76,10 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+
+import com.psb.myapplication.R;
+import com.psb.myapplication.Utils.Camera2Proxy;
+import com.psb.myapplication.Utils.ImageUtils;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -168,6 +167,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     ViewGroup parentbuf;                                                            // 父容器
     CameraCaptureSession.StateCallback PreCaptureCallback;                          // 拍照回调
     private ValueAnimator currentAnimator;                                          // 动画
+    Rect zoomRect = null;                                                             // 裁剪框
     // 初始化 SensorManager 和传感器监听器
     private SensorManager sensorManager;                                            // 传感器管理器
 
@@ -1154,7 +1154,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         texture.setDefaultBufferSize(previewSize.getWidth(), previewSize.getHeight());
         // 创建一个Surface
         Surface previewSurface = new Surface(texture);
-        Rect zoomRect = previewRequestBuilder.get(CaptureRequest.SCALER_CROP_REGION);
+        zoomRect = previewRequestBuilder.get(CaptureRequest.SCALER_CROP_REGION);
         // 设置预览输出的Surface
         if (zoomRect != null) {
             recordvideoRequestBuilder.set(CaptureRequest.SCALER_CROP_REGION, zoomRect);
@@ -2202,6 +2202,12 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 // 自动对焦
                 previewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_START);
             }
+
+        // 设置预览输出的Surface
+        if (zoomRect != null && recordvideoRequestBuilder != null && colorState == 1) {
+            zoomRect = recordvideoRequestBuilder.get(CaptureRequest.SCALER_CROP_REGION);
+            previewRequestBuilder.set(CaptureRequest.SCALER_CROP_REGION, zoomRect);
+        }
             // 检测焦点状态
             previewRequestBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER, CameraMetadata.CONTROL_AE_PRECAPTURE_TRIGGER_START);
 

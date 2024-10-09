@@ -21,7 +21,7 @@ import java.util.List;
 public class CustomViewL extends LinearLayout {
 
     // Activity
-    private final CameraActivity mCameraActivity= (CameraActivity) getContext();
+    private final CameraActivity mCameraActivity = (CameraActivity) getContext();
     // 日志标签
     private static final String TAG = "CustomViewL.TAG";
     // 当前选中的项目索引
@@ -31,9 +31,9 @@ public class CustomViewL extends LinearLayout {
     // 存储所有的 TextView
     List<TextView> textViews = new ArrayList<>();
     // 当前索引
-    int index=0;
+    int index = 0;
     // 颜色状态
-    int colorState=0;
+    int colorState = 0;
 
 
     // 子项缩放比例常量
@@ -55,6 +55,7 @@ public class CustomViewL extends LinearLayout {
 
     /**
      * 初始化方法，主要用于获取屏幕宽度
+     *
      * @param context 上下文环境
      */
     private void init(Context context) {
@@ -78,7 +79,7 @@ public class CustomViewL extends LinearLayout {
             TextView textView = textViews.get(i);
             if (i == mCurrentItem) {
                 textView.setTextColor(Color.YELLOW);
-                colorState=i;
+                colorState = i;
             } else {
                 textView.setTextColor(Color.WHITE);
             }
@@ -97,7 +98,7 @@ public class CustomViewL extends LinearLayout {
             updateTextColor();
             return true;
         }
-       return false;
+        return false;
     }
 
     /**
@@ -112,11 +113,12 @@ public class CustomViewL extends LinearLayout {
             updateTextColor();
             return true;
         }
-       return false;
+        return false;
     }
 
     /**
      * 添加指示器文字视图
+     *
      * @param names 指示器的名字数组
      */
     public void addIndicator(String[] names) {
@@ -128,10 +130,9 @@ public class CustomViewL extends LinearLayout {
             // 设置文字
             textView.setText(names[i]);
             // 设置文字颜色
-            if(i==0) {
+            if (i == 0) {
                 textView.setTextColor(Color.YELLOW);
-            }
-            else {
+            } else {
                 textView.setTextColor(Color.WHITE);
             }
             // 设置文字行数
@@ -169,8 +170,7 @@ public class CustomViewL extends LinearLayout {
     }
 
     // 获取当前索引(确定当前模式位置)
-    public int getIndex()
-    {
+    public int getIndex() {
         return index;
     }
 }

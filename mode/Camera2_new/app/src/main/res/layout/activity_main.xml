@@ -49,7 +49,7 @@
         android:layout_width="77dp"
         android:layout_height="70dp"
         android:layout_gravity="bottom|center"
-        android:layout_marginBottom="64dp"
+        android:layout_marginBottom="80dp"
         android:src="@drawable/recordvideo"
         android:visibility="gone"/>
 
@@ -58,7 +58,7 @@
         android:layout_width="77dp"
         android:layout_height="70dp"
         android:layout_gravity="bottom|center"
-        android:layout_marginBottom="64dp"
+        android:layout_marginBottom="80dp"
         android:src="@drawable/capture"
         tools:ignore="SpeakableTextPresentCheck" />
 
@@ -69,7 +69,7 @@
         android:layout_height="50dp"
         android:layout_gravity="bottom|center"
         android:layout_marginStart="-100dp"
-        android:layout_marginBottom="74dp"
+        android:layout_marginBottom="90dp"
         android:scaleType="centerCrop" />
 
     <ImageView
@@ -87,7 +87,7 @@
         android:layout_height="45dp"
         android:layout_gravity="bottom|center"
         android:layout_marginStart="100dp"
-        android:layout_marginBottom="76.5dp"
+        android:layout_marginBottom="92.5dp"
         android:src="@drawable/switch_camera"
         tools:ignore="SpeakableTextPresentCheck,TouchTargetSizeCheck" />
 
