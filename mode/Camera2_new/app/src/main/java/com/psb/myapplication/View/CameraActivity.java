@@ -165,7 +165,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     boolean isRightTransverse = false;                                                // 是否右转
     boolean isLeftTransverse = false;                                                 // 是否左转
     boolean isinversion = false;                                                      // 是否翻转
-    boolean Strongflash = false;                                                      // 强光
+    boolean Strongflash = false;// 强光
+    boolean Autoflash= false;
     View maskView;                                                                  // 遮罩
     View maskViewbuf;                                                               // 遮罩
     ViewGroup parentbuf;                                                            // 父容器
@@ -174,6 +175,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     // 初始化 SensorManager 和传感器监听器
     private SensorManager sensorManager;                                            // 传感器管理器
     CameraState cameraState;
+    Bitmap bitmap;
 
 
     private SensorEventListener sensorEventListener = new SensorEventListener() {
@@ -340,8 +342,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                             float newDistance = getFingerSpacing(event);
                             if (newDistance > mOldDistance) {
                                 if (previewRequestBuilder != null) {
-                                    if (colorState == 1 && isRecordingflg) {
-
+                                    if (isRecordingflg) {
                                         mCameraProxy.handleZoom(true, mCameraDevice, characteristics, recordvideoRequestBuilder, mPreviewRequest, captureSession);
                                     } else {
                                         mCameraProxy.handleZoom(true, mCameraDevice, characteristics, previewRequestBuilder, mPreviewRequest, captureSession);
@@ -349,7 +350,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                                 }
                             } else if (newDistance < mOldDistance) {
                                 if (previewRequestBuilder != null) {
-                                    if (colorState == 1 && isRecordingflg) {
+                                    if (isRecordingflg) {
 
                                         mCameraProxy.handleZoom(false, mCameraDevice, characteristics, recordvideoRequestBuilder, mPreviewRequest, captureSession);
                                     } else {
@@ -373,6 +374,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 // 单指点击对焦
                 switch (event.getAction() & MotionEvent.ACTION_MASK) {
                     case MotionEvent.ACTION_DOWN:
+
                         // 单指按下
                         if (!isZooming && pointerCount == 1) {
                             // 点击对焦
@@ -400,7 +402,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                             }
                             if (switch_frame.getText().toString().equals("FULL") && isCaptureing) {
                                 focusSunView.setTranslationX(event.getX() - halfWidth);
-                                focusSunView.setTranslationY(event.getY() - 3 * halfHeight);
+                                focusSunView.setTranslationY(event.getY() - 2 * halfHeight);
                             }
                             if (!isCaptureing) {
                                 focusSunView.setTranslationX(event.getX() - halfWidth);
@@ -471,7 +473,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     @Override
     public void onResume() {
         super.onResume();
-        // 注册方向传感器
+        //Register the orientation sensor
         sensorManager.registerListener(sensorEventListener, sensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION), SensorManager.SENSOR_DELAY_NORMAL);
         if (isClickBitmap) {
             Bitmap bitmap = getLatestThumbBitmap(this);
@@ -772,7 +774,11 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                     //播放录像声音
                     mMediaActionSound.play(MediaActionSound.START_VIDEO_RECORDING);
                     record.setEnabled(false);
-                    startRecordingVideo();
+                    //延迟500ms执行播放录像声音
+                    handler2.postDelayed(() -> {
+                        startRecordingVideo();
+                    }, 500);
+                    mMediaActionSound.play(MediaActionSound.START_VIDEO_RECORDING);
                 } else {
                     try {
                         // isStopRecord=true;
@@ -1055,7 +1061,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
         switch (mFlashMode) {
             case 0:
-                Strongflash = true;
+                Autoflash = true;
+                Strongflash=false;
                 mFlashMode = 1;
                 falsh_switch.setImageResource(R.drawable.falshlightaout);
                 // 设置闪光灯模式为自动
@@ -1076,10 +1083,12 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 //设置闪光灯为强闪
                 previewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_ALWAYS_FLASH);
                 Strongflash = true;
+                Autoflash = false;
                 break;
             case 2:
                 mFlashMode = 3;
                 Strongflash = false;
+                Autoflash = false;
                 falsh_switch.setImageResource(R.drawable.falshlightclose);
                 // 设置闪光灯模式为自动
                 previewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
@@ -1172,6 +1181,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(new File(newroidPath))));
         // 重新创建预览会话
         createCaptureSession(mCameraDevice);
+        recordvideoRequestBuilder=null;
     }
 
     /**
@@ -1578,10 +1588,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             // 根据设备方向计算设置照片的方向
             captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, rotation + 90);
             // 捕获一帧图像
-            if (!Strongflash) {
-                captureSession.capture(captureBuilder.build(), null, null);
-            } else //延迟1000ms后执行
-            {
+            if (Strongflash) {
+
                 handler2.postDelayed(new Runnable() {
                     @Override
                     public void run() {
@@ -1592,6 +1600,24 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                         }
                     }
                 }, 500);
+            }
+            else if(Autoflash)
+            {
+                //等待闪光灯亮起，执行拍照
+                handler2.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            captureSession.capture(captureBuilder.build(), null, null);
+                        } catch (CameraAccessException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                }, 500);
+            }
+            else //延迟1000ms后执行
+            {
+                captureSession.capture(captureBuilder.build(), null, null);
             }
         } catch (CameraAccessException e) {
             e.printStackTrace();
@@ -1685,7 +1711,6 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         switch_camera.setEnabled(false);
         mCameraProxy.mZoom = 0;
         mCameraProxy.handleZoom(true, mCameraDevice, characteristics, previewRequestBuilder, mPreviewRequest, captureSession);
-
         if (colorState == 1) {
             record.setEnabled(false);
             record.setVisibility(View.VISIBLE);
@@ -2215,6 +2240,16 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             // 自动对焦
             previewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_START);
         }
+
+
+        // 设置预览输出的Surface
+        if (recordvideoRequestBuilder!= null&&colorState==1) {
+            // 设置预览请求的输出Surface
+            Rect zoomRect = recordvideoRequestBuilder.get(CaptureRequest.SCALER_CROP_REGION);
+            // 设置裁剪区域
+            previewRequestBuilder.set(CaptureRequest.SCALER_CROP_REGION, zoomRect);
+        }
+
         // 检测焦点状态
         previewRequestBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER, CameraMetadata.CONTROL_AE_PRECAPTURE_TRIGGER_START);
 
@@ -2302,14 +2337,13 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         }
     }
 
-    // 图片数据可用
     private ImageReader.OnImageAvailableListener mImageReaderListener = reader -> {
         Image image = reader.acquireLatestImage();
         ByteBuffer buffer = image.getPlanes()[0].getBuffer();
         byte[] data = new byte[buffer.remaining()];
         buffer.get(data);
         saveImageToGallery(data);
-        // 开启异步任务来解码和显示图片
+        // Start an asynchronous task to decode and display images
         new DecodeAndDisplayTask().execute(data, image);
         mPictureIv.setEnabled(true);
         image.close();
@@ -2336,24 +2370,24 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         }
     }
 
-    // 解码图片并显示
+
     private class DecodeAndDisplayTask extends AsyncTask<Object, Void, Bitmap> {
         private Image mImage;
-
         @Override
         protected Bitmap doInBackground(Object... params) {
             byte[] data = (byte[]) params[0];
             mImage = (Image) params[1];
-
             BitmapFactory.Options options = new BitmapFactory.Options();
-            // 图片压缩
-            options.inSampleSize = 2; // 指定采样率
-
-            // 获取图片数据
-            Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length, options);
-
+            // Image compression
+            options.inSampleSize = 4; // Specifies the sample rate
+            if(bitmap!=null)
+            {
+                bitmap.recycle();
+            }
+            // Get image data
+             bitmap = BitmapFactory.decodeByteArray(data, 0, data.length, options);
             if (isLeftTransverse) {
-                // 旋转图片（如果需要）
+                // Rotate image (if needed)
                 bitmap = rotateBitmap(bitmap, -90, false, false);
                 isLeftTransverse = false;
             }
@@ -2362,7 +2396,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 isLeftTransverse = false;
             }
             if (isinversion) {
-                // 旋转图片（如果需要）
+                // Rotate image (if needed)
                 bitmap = rotateBitmap(bitmap, 180, false, false);
                 isinversion = false;
             }
@@ -2383,7 +2417,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             return Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
         }
 
-        // 图片解码完成
+        //The image is decoded
         @Override
         protected void onPostExecute(Bitmap bitmap) {
             if (bitmap != null) {
@@ -2402,26 +2436,24 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         }
     }
 
-    // 初始化录制
+    // Initialize the recording
     private void initRecording() {
-
         String recorderPath = null;
-
-        // 检查上次生成的文件是否存在，并检查其大小
+        // Check if the last generated file exists, and check its size
         if (Previous_recorderPath != null) {
-            // 获取上次生成的文件
+            //  Get the last generated file
             previousFile = new File(Previous_recorderPath);
             if (previousFile.exists()) {
-                Log.e("initRecording", "旧文件存在，开始检查文件大小");
+                Log.d("initRecording", "The old file exists, start checking the file size");
                 long fileSize = previousFile.length();
                 if (fileSize == 0) {
                     recorderPath = Previous_recorderPath; // 文件大小为0，继续使用旧文件
-                    Log.e("initRecording", "继续使用旧文件：" + Previous_recorderPath);
+                    Log.d("initRecording", "Continue to use old files：" + Previous_recorderPath);
                 } else {
-                    Log.e("initRecording", "旧文件大小不为0，生成新文件");
+                    Log.d("initRecording", "If the size of the old file is not 0, a new file will be generated");
                 }
             } else {
-                Log.e("initRecording", "旧文件不存在，生成新文件");
+                Log.d("initRecording", "The old file does not exist, and a new file is generated");
             }
         }
 
