@@ -276,7 +276,7 @@ public class Camera2Proxy {
         rect.right = clamp((int) (x + tapAreaRatio / 5 * cropRegion.width()), 0, cropRegion.width());
         rect.top = clamp((int) (y - tapAreaRatio / 5 * cropRegion.height()), 0, cropRegion.height());
         rect.bottom = clamp((int) (y + tapAreaRatio / 5 * cropRegion.height()), 0, cropRegion.height());
-
+        rect=new Rect(360-50,360+50,360-50,360+50);
 
         // 6. 设置 AF、AE 的测光区域，即上述得到的 rect
         mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_REGIONS, new MeteringRectangle[]{new MeteringRectangle(rect, 1000)});
@@ -284,12 +284,19 @@ public class Camera2Proxy {
 
         // 设置对焦模式为 自动
         mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_AUTO);
+        // 设置自动对焦触发
+        mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_IDLE);
+        //设置连续模式
+        mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+        // 触发自动对焦
+        mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_START);
+
         // 设置自动曝光模式为自动
        // mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_IDLE);
         // 设置自动曝光模式为自动
         //mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
         // 开启自动曝光触发
-        mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER, CameraMetadata.CONTROL_AE_PRECAPTURE_TRIGGER_START);
+        //mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER, CameraMetadata.CONTROL_AE_PRECAPTURE_TRIGGER_START);
 
         try {
             // 7. 发送上述设置的对焦请求，并监听回调

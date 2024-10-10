@@ -43,6 +43,7 @@ import android.hardware.camera2.CameraMetadata;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
 import android.hardware.camera2.TotalCaptureResult;
+import android.hardware.camera2.params.MeteringRectangle;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
@@ -382,9 +383,9 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                             if (previewRequestBuilder != null) {
                                 if (colorState == 1 && isRecordingflg) {
                                     // mCameraProxy.handleZoom(false, mCameraDevice, characteristics, recordvideoRequestBuilder, mPreviewRequest, captureSession);
-                                    mCameraProxy.focusOnPoint((int) event.getX(), (int) event.getY(), mTextureView.getWidth(), mTextureView.getHeight(), mCameraDevice, recordvideoRequestBuilder, captureSession, previewSize, mTextureView);
+                                    focusOnPoint((int) event.getX(), (int) event.getY(), mTextureView.getWidth(), mTextureView.getHeight());
                                 } else {
-                                    mCameraProxy.focusOnPoint((int) event.getX(), (int) event.getY(), mTextureView.getWidth(), mTextureView.getHeight(), mCameraDevice, previewRequestBuilder, captureSession, previewSize, mTextureView);
+                                    focusOnPoint((int) event.getX(), (int) event.getY(), mTextureView.getWidth(), mTextureView.getHeight());
                                 }
                             }
                             // triggerFocusAtPoint(event.getX(), event.getY(), previewSize.getWidth(), previewSize.getHeight());
@@ -2600,5 +2601,143 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         public int getPreviewHeight() {
             return previewHeight;
         }
+    }
+    public void focusOnPoint(double x, double y, int width, int height) {
+        if (mCameraDevice == null || previewRequestBuilder == null) {
+            return;
+        }
+
+        int previewWidth = previewSize.getWidth();
+        int previewHeight = previewSize.getHeight();
+
+        Rect cropRegion = previewRequestBuilder.get(CaptureRequest.SCALER_CROP_REGION);
+        if (cropRegion == null) {
+            cropRegion = characteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE);
+        }
+
+        double tapAreaRatio = 0.1;
+        Rect rect = new Rect();
+        rect.left = clamp((int) (x - tapAreaRatio / 5 * cropRegion.width()), 0, cropRegion.width());
+        rect.right = clamp((int) (x + tapAreaRatio / 5 * cropRegion.width()), 0, cropRegion.width());
+        rect.top = clamp((int) (y - tapAreaRatio / 5 * cropRegion.height()), 0, cropRegion.height());
+        rect.bottom = clamp((int) (y + tapAreaRatio / 5 * cropRegion.height()), 0, cropRegion.height());
+      //  rect=new Rect(360-50,360+50,360-50,360+50);
+
+        previewRequestBuilder.set(CaptureRequest.CONTROL_AF_REGIONS, new MeteringRectangle[]{new MeteringRectangle(rect, 1000)});
+        previewRequestBuilder.set(CaptureRequest.CONTROL_AE_REGIONS, new MeteringRectangle[]{new MeteringRectangle(rect, 1000)});
+        previewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_OFF);
+        previewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_AUTO);
+        previewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_START);
+
+        try {
+            captureSession.capture(previewRequestBuilder.build(), new CameraCaptureSession.CaptureCallback() {
+                @Override
+                public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request, TotalCaptureResult result) {
+                    super.onCaptureCompleted(session, request, result);
+                    // 获取焦点状态
+                    Integer state = result.get(CaptureResult.CONTROL_AF_STATE);
+                    Log.d("focusOnPoint", "onCaptureCompleted: " + state);
+                    // 对焦完成后的处理
+                        previewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_CANCEL);
+                    }
+            }, null);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // 对焦回调
+    private CameraCaptureSession.CaptureCallback mAfCaptureCallback = new CameraCaptureSession.CaptureCallback() {
+
+       // 对焦回调
+        private void process(CaptureResult result) throws CameraAccessException {
+            Log.d("mAfCaptureCallback", "process: ");
+            if (result == null) {
+              //  Toast.makeText(mActivity, "Result is null", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            // 获取焦点状态
+            Integer state = result.get(CaptureResult.CONTROL_AF_STATE);
+           // Log.d("mAfCaptureCallback", "process: oldstate: " + state);
+            if (state == null) {
+                Log.e("mAfCaptureCallback", "STATE is null");
+              //  Toast.makeText(mActivity, "STATE is null", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            Log.d("mAfCaptureCallback", "oldCONTROL_AF_STATE: " + state);
+
+            // 显示进入 Process 的提示
+          //  Toast.makeText(mActivity, "进入Process", Toast.LENGTH_SHORT).show();
+
+            // 检查焦点状态
+            if (Objects.equals(state, CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED)
+                    || Objects.equals(state, CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED)) {
+                //Toast.makeText(this, "对焦成功", Toast.LENGTH_SHORT).show();
+                // 设置相关参数
+
+                previewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CaptureRequest.CONTROL_AF_TRIGGER_CANCEL);
+                // 设置对焦模式
+                previewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+                // 关闭自动曝光
+                previewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF);
+                // 启动预览
+                startPreview();
+           } else {
+                // 对焦失败，记录日志并提示用户
+               // Log.w(TAG, "对焦失败，状态：" + state);
+              //  Toast.makeText(mActivity, "对焦失败，请调整相机位置或光线", Toast.LENGTH_SHORT).show();
+                 //尝试重新对焦
+              //  retryAutoFocus();
+            }
+        }
+
+    private void retryAutoFocus() throws CameraAccessException {
+        // 重新触发自动对焦
+        previewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CaptureRequest.CONTROL_AF_TRIGGER_START);
+        // 提交新的请求
+
+        captureSession.setRepeatingRequest(previewRequestBuilder.build(), null, null);
+        captureSession.capture(previewRequestBuilder.build(), mAfCaptureCallback, null);
+    }
+
+        // ae
+        @Override
+        public void onCaptureProgressed(@NonNull CameraCaptureSession session,
+                                        @NonNull CaptureRequest request,
+                                        @NonNull CaptureResult partialResult) {
+            //Toast.makeText(mActivity, "--onCaptureProgressed--", Toast.LENGTH_SHORT).show();
+            try {
+                process(partialResult);
+            } catch (CameraAccessException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        // ae
+        @Override
+        public void onCaptureCompleted(@NonNull CameraCaptureSession session,
+                                       @NonNull CaptureRequest request,
+                                       @NonNull TotalCaptureResult result) {
+            //Toast.makeText(mActivity, "--onCaptureCompleted--", Toast.LENGTH_SHORT).show();
+            try {
+                process(result);
+            } catch (CameraAccessException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    };
+
+    /**
+     * 对焦区域坐标限制
+     *
+     * @param x 需要限制的坐标值
+     * @param min 最小坐标值
+     * @param max 最大坐标值
+     * @return 限制后的坐标值
+     */
+    private int clamp(int x, int min, int max) {
+        if (x > max) return max;
+        if (x < min) return min;
+        return x;
     }
 }
