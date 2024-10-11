@@ -2653,6 +2653,13 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
         try {
             CaptureRequest.Builder finalFocusRequestBuilder = focusRequestBuilder;
+            if (mCameraProxy.mPreviewRequestBuilder != null) {
+                Rect zoomRect = mCameraProxy.mPreviewRequestBuilder.get(CaptureRequest.SCALER_CROP_REGION);
+                Log.d("--takePicture--", "zoomRect:" + zoomRect);
+                if (zoomRect != null) {
+                    finalFocusRequestBuilder.set(CaptureRequest.SCALER_CROP_REGION, zoomRect);
+                }
+            }
             captureSession.capture(focusRequestBuilder.build(), new CameraCaptureSession.CaptureCallback() {
                 @Override
                 public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request, TotalCaptureResult result) {
@@ -2661,6 +2668,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                     Integer state = result.get(CaptureResult.CONTROL_AF_STATE);
                     Log.d("focusOnPoint", "onCaptureCompleted: " + state);
                     // 对焦完成后的处理
+
+
                     // 恢复对焦模式
                     finalFocusRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_CANCEL);
                     mPreviewRequest = finalFocusRequestBuilder.build();
