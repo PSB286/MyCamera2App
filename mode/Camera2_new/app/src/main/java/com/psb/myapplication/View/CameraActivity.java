@@ -410,7 +410,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                                 focusSunView.setTranslationY(event.getY() + halfHeight);
                             }
                             // 开始倒计时
-                            focusSunView.startCountdown(false);
+                            focusSunView.startCountdown(true);
                         }
                         break;
 
@@ -2542,7 +2542,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
     // 设置曝光度
     private void applyExposure(float exposure) {
-        exposure = 400 * (exposure / 9950) - 40;
+        exposure = 100 * (exposure / 9950) - 40;
         Log.d("applyExposure", "applyExposure: " + exposure);
         if (colorState == 1 && isRecordingflg) {
             try {
@@ -2574,6 +2574,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     }
 
     public CameraState restoreCameraState() {
+
         // 获取SharedPreferences实例
         SharedPreferences preferences = getSharedPreferences("camera_state", MODE_PRIVATE);
         // 恢复画幅状态，默认值设为0
@@ -2583,7 +2584,6 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         // 创建并返回CameraState对象
         return new CameraState(previewWidth, previewHeight);
     }
-
 
     public static class CameraState {
         private int previewWidth;
@@ -2607,10 +2607,28 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             return;
         }
 
+        CaptureRequest.Builder focusRequestBuilder=null;
+        try {
+            focusRequestBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
+        } catch (CameraAccessException e) {
+            throw new RuntimeException(e);
+        }
+        Log.d("focusOnPoint","focusOnPoint:"+focusRequestBuilder);
+        if(focusRequestBuilder==null)
+        {
+            return;
+        }
+
+        focusRequestBuilder.addTarget(surfaces.get(0));
+        if(isRecording)
+        {
+            focusRequestBuilder.addTarget(mMediaRecorder.getSurface());
+        }
+
         int previewWidth = previewSize.getWidth();
         int previewHeight = previewSize.getHeight();
 
-        Rect cropRegion = previewRequestBuilder.get(CaptureRequest.SCALER_CROP_REGION);
+        Rect cropRegion = focusRequestBuilder.get(CaptureRequest.SCALER_CROP_REGION);
         if (cropRegion == null) {
             cropRegion = characteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE);
         }
@@ -2621,16 +2639,21 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         rect.right = clamp((int) (x + tapAreaRatio / 5 * cropRegion.width()), 0, cropRegion.width());
         rect.top = clamp((int) (y - tapAreaRatio / 5 * cropRegion.height()), 0, cropRegion.height());
         rect.bottom = clamp((int) (y + tapAreaRatio / 5 * cropRegion.height()), 0, cropRegion.height());
-      //  rect=new Rect(360-50,360+50,360-50,360+50);
+        //  rect=new Rect(360-50,360+50,360-50,360+50);
 
-        previewRequestBuilder.set(CaptureRequest.CONTROL_AF_REGIONS, new MeteringRectangle[]{new MeteringRectangle(rect, 1000)});
-        previewRequestBuilder.set(CaptureRequest.CONTROL_AE_REGIONS, new MeteringRectangle[]{new MeteringRectangle(rect, 1000)});
-        previewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_OFF);
-        previewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_AUTO);
-        previewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_START);
+        focusRequestBuilder.set(CaptureRequest.CONTROL_AF_REGIONS, new MeteringRectangle[]{new MeteringRectangle(rect, 1000)});
+        focusRequestBuilder.set(CaptureRequest.CONTROL_AE_REGIONS, new MeteringRectangle[]{new MeteringRectangle(rect, 1000)});
+        // previewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_OFF);
+        focusRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_AUTO);
+        //连续对焦
+        focusRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_IDLE);
+        //连续自动对焦
+        focusRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+        focusRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_START);
 
         try {
-            captureSession.capture(previewRequestBuilder.build(), new CameraCaptureSession.CaptureCallback() {
+            CaptureRequest.Builder finalFocusRequestBuilder = focusRequestBuilder;
+            captureSession.capture(focusRequestBuilder.build(), new CameraCaptureSession.CaptureCallback() {
                 @Override
                 public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request, TotalCaptureResult result) {
                     super.onCaptureCompleted(session, request, result);
@@ -2638,8 +2661,11 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                     Integer state = result.get(CaptureResult.CONTROL_AF_STATE);
                     Log.d("focusOnPoint", "onCaptureCompleted: " + state);
                     // 对焦完成后的处理
-                        previewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_CANCEL);
-                    }
+                    // 恢复对焦模式
+                    finalFocusRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_CANCEL);
+                    mPreviewRequest = finalFocusRequestBuilder.build();
+                    startPreview();
+                }
             }, null);
         } catch (CameraAccessException e) {
             e.printStackTrace();
@@ -2687,7 +2713,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                // Log.w(TAG, "对焦失败，状态：" + state);
               //  Toast.makeText(mActivity, "对焦失败，请调整相机位置或光线", Toast.LENGTH_SHORT).show();
                  //尝试重新对焦
-              //  retryAutoFocus();
+                retryAutoFocus();
             }
         }
 
@@ -2695,7 +2721,6 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         // 重新触发自动对焦
         previewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CaptureRequest.CONTROL_AF_TRIGGER_START);
         // 提交新的请求
-
         captureSession.setRepeatingRequest(previewRequestBuilder.build(), null, null);
         captureSession.capture(previewRequestBuilder.build(), mAfCaptureCallback, null);
     }

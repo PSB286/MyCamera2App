@@ -19,7 +19,7 @@ public class FocusSunView extends View {
     private Paint framePaint = new Paint(Paint.ANTI_ALIAS_FLAG);            // 边框画笔
     private float borderWidth = 3f;                                         // 边框宽度
     private float progress = 0.5f;                                          // 进度
-    private float realProcess = 0.5f;                                       // 当前进度
+    static float realProcess = 0.5f;                                       // 当前进度
     private float angle = 360f;                                             // 角度
     private float circleY = -1f;                                            // 圆心
     private float lastCircleY = 0f;                                         // 上次圆心
