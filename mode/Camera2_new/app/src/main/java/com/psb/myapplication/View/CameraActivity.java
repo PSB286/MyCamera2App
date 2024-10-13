@@ -16,6 +16,7 @@ import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -56,6 +57,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.Settings;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.Size;
@@ -80,6 +82,7 @@ import android.widget.Toast;
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.camera.core.CameraState;
 import androidx.core.graphics.Insets;
@@ -147,7 +150,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     private short lastFlashMode = 2;
     private CameraCaptureSession.CaptureCallback mPreCaptureCallback;               // 拍照回调
     public MediaActionSound mMediaActionSound;                                      // 拍照声音
-    public Animation btnAnimation, LoadAnimation, bitmapAnimation, mTextureViewAnimation;                     // 动画
+    public Animation captureAnimation,btnAnimation, LoadAnimation, bitmapAnimation, mTextureViewAnimation;                     // 动画
     static Size largest = new Size(4, 3);                                 // 默认画幅
     boolean isCapture = false;                                                     // 是否拍照中
     boolean isCaptureing = true;                                                      // 是否拍照中
@@ -221,7 +224,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         Log.d("--Orientation--", "Azimuth: " + azimuth + ", Pitch: " + pitch + ", Roll: " + roll);
         // 判断是否需要旋转图片
         //if (Math.abs(pitch) >= 25 || Math.abs(roll) >= 25) {
-        if (roll <= 5 && pitch <= 0) {
+        if (roll <= 20 && pitch <= 0) {
             mPictureIv.setRotation(0);
             switch_camera.setRotation(0);
             switch_frame.setRotation(0);
@@ -238,7 +241,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             isRightTransverse = false;
             isLeftTransverse = false;
         }
-        if (pitch <= 5 && roll >= 20) {
+        if (pitch <= 5 && roll >= 40) {
             mPictureIv.setRotation(90);
             switch_camera.setRotation(90);
             switch_frame.setRotation(90);
@@ -255,7 +258,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             isinversion = false;
             isRightTransverse = false;
         }
-        if (pitch <= 50 && roll <= -30) {
+        if (pitch <= 50 && roll <= -50) {
             mPictureIv.setRotation(-90);
             switch_camera.setRotation(-90);
             switch_frame.setRotation(-90);
@@ -584,7 +587,6 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         mTextureView = findViewById(R.id.texture);                              // 绑定TextureView
         mTextureView.setSurfaceTextureListener(mSurfaceTextureListener);        // 绑定TextureView的监听器
         mRootLayout = findViewById(R.id.root);                                  // 绑定根布局
-        //mRootLayout.setOnTouchListener(this);
         timerText = findViewById(R.id.timer_text);                              // 绑定计时器
         mCustomViewL = findViewById(R.id.mCustomView);                          // 绑定自定义View
         record = findViewById(R.id.recordvideo);                                // 绑定录制按钮
@@ -615,9 +617,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         falsh_switch.setEnabled(false);
         switch_camera.setEnabled(false);
         Load.setEnabled(false);
-        option2.setEnabled(false);
         option2.setTextColor(Color.YELLOW);
-        option5.setEnabled(false);
         option5.setTextColor(Color.YELLOW);
 
         mCameraProxy = new Camera2Proxy(this);                       // 创建Camera2Proxy对象
@@ -629,9 +629,6 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         } else {
             if (cameraState.previewWidth == 1) {
                 mCameraProxy.mZoom = 0;
-                option1.setEnabled(false);
-                option2.setEnabled(true);
-                option3.setEnabled(true);
                 option1.setTextColor(Color.YELLOW);
                 option2.setTextColor(Color.WHITE);
                 option3.setTextColor(Color.WHITE);
@@ -643,11 +640,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 saveCameraState(1, 1);
                 isOption = true;
             } else if (cameraState.previewWidth == 20) {
-                option1.setEnabled(true);
                 option1.setTextColor(Color.WHITE);
-                option2.setEnabled(true);
                 option2.setTextColor(Color.WHITE);
-                option3.setEnabled(false);
                 option3.setTextColor(Color.YELLOW);
                 switch_frame.setText(option3.getText().toString());
                 Choose.setVisibility(View.GONE);
@@ -695,11 +689,12 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             }
         });
         btnAnimation = AnimationUtils.loadAnimation(this, R.anim.btn_anim);          // 加载动画
+        captureAnimation=AnimationUtils.loadAnimation(this, R.anim.btn_anim);
         bitmapAnimation = AnimationUtils.loadAnimation(this, R.anim.alpha_out);
         mTextureViewAnimation = AnimationUtils.loadAnimation(this, R.anim.alpha_in);
         LoadAnimation = AnimationUtils.loadAnimation(this, R.anim.dialog_loading);     // 加载加载动画
         recordTouchListener();                                                              // 录制按钮动画
-        captureTouchListener();                                                             // 拍照按钮动画
+       // captureTouchListener();                                                             // 拍照按钮动画
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);                   // 获取传感器管理器
         sensorManager.registerListener(sensorEventListener, sensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION), SensorManager.SENSOR_DELAY_NORMAL);
         // 注册传感器监听器
@@ -759,10 +754,34 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             }
 
             if (!allPermissionsGranted) {
-                // 如果有任何权限未被授予，则退出应用
-                finishAffinity();
+                // 如果有任何权限未被授予，则跳转到应用详情页面
+                showPermissionDialog();
             }
         }
+    }
+    private void showPermissionDialog() {
+        new AlertDialog.Builder(this)
+                .setTitle("权限未被授予")
+                .setMessage("应用需要以下权限才能正常运行：\n\n- 摄像头权限\n- 录音权限\n- 修改音频设置权限\n\n请前往应用详情页面手动授予这些权限。")
+                .setPositiveButton("前往设置", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        showAppDetails();
+                    }
+                })
+                .setNegativeButton("取消", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        finishAffinity();
+                    }
+                })
+                .show();
+    }
+    private void showAppDetails() {
+        Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+        Uri uri = Uri.fromParts("package", getPackageName(), null);
+        intent.setData(uri);
+        startActivity(intent);
     }
 
 
@@ -792,6 +811,13 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                     void_quality.setEnabled(false);
                     mCustomViewL.setVisibility(View.GONE);
                     mCustomViewL.setEnabled(false);
+                    capture.setEnabled(false);
+                    capture.setVisibility(View.GONE);
+                    option4.setEnabled(false);
+                    option5.setEnabled(false);
+                    Choose2.setVisibility(View.GONE);
+                    Title.setVisibility(View.VISIBLE);
+
                     //延迟500ms执行播放录像声音
                     handler2.postDelayed(() -> {
                         startRecordingVideo();
@@ -852,7 +878,6 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
                     }
                 });
-                mCameraProxy.mZoom = 0;
                 isSwichCamera = true;
                 isLayoutSwich = false;
                 isOption = false;
@@ -872,14 +897,15 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 mTextureViewAnimation.setAnimationListener(new Animation.AnimationListener() {
                     @Override
                     public void onAnimationStart(Animation animation) {
+                        mCameraProxy.mZoom = 0;
                         cameraId = "1".equals(cameraId) ? "0" : "1";
                         // 切换摄像头
                         closeCamera();
                         openCamera(mTextureView.getWidth(), mTextureView.getHeight());
-                        isSwichCamera = false;
                         mTextureView.setEnabled(false);
                         // 关闭对焦
                         focusSunView.setVisibility(View.INVISIBLE);
+                        mCameraProxy.handleZoom(true, mCameraDevice, characteristics, previewRequestBuilder, mPreviewRequest, captureSession);
                     }
 
                     @Override
@@ -890,8 +916,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                         mCustomViewL.textViews.get(1).setEnabled(true);
                         mPictureIv.setEnabled(true);
                         capture.setEnabled(true);
-                        //打开对焦
-                        //focusSunView.setVisibility(View.VISIBLE);
+                        mFlashMode=lastFlashMode;
+                        SwichFlash();
                     }
 
                     @Override
@@ -899,14 +925,38 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
                     }
                 });
-
-                mCameraProxy.handleZoom(true, mCameraDevice, characteristics, previewRequestBuilder, mPreviewRequest, captureSession);
             }
         });
 
         // 拍照按钮x
         capture.setOnClickListener(v -> {
             if (v.getId() == R.id.capture) {
+                mTextureViewAnimation.setAnimationListener(null);
+                capture.startAnimation(captureAnimation); //拍照按钮动画
+                //动漫回调
+                captureAnimation.setAnimationListener(new Animation.AnimationListener() {
+                    @Override
+                    public void onAnimationStart(Animation animation) {
+//                                                           //  Toast.makeText(CameraActivity.this, "点击了拍照按钮", Toast.LENGTH_SHORT).show();
+                        capture.setEnabled(false);
+                        option1.setEnabled(false);
+                        option2.setEnabled(false);
+                        option3.setEnabled(false);
+                        //isCaptureingflg = true;
+                        //switchCameraWithMaskAnimation();
+                        Log.d("--1CameraActivity--", "123");
+                        takePicture();
+                        mMediaActionSound.play(MediaActionSound.SHUTTER_CLICK); // 播放拍照声音
+                    }
+
+                    @Override
+                    public void onAnimationEnd(Animation animation) {
+                    }
+                    @Override
+                    public void onAnimationRepeat(Animation animation) {
+
+                    }
+                });
             }
         });
 
@@ -914,6 +964,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         switch_frame.setOnClickListener(v -> {
             if (v.getId() == R.id.frame_switch) {
                 SwichFrame();
+                switch_frame.setEnabled(false);
+                falsh_switch.setEnabled(false);
                 mCameraProxy.mZoom = 0;
                 mCameraProxy.handleZoom(true, mCameraDevice, characteristics, previewRequestBuilder, mPreviewRequest, captureSession);
             }
@@ -923,6 +975,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         void_quality.setOnClickListener(v -> {
             if (v.getId() == R.id.void_quality) {
                 SwichQuality();
+                void_quality.setEnabled(false);
                 mCameraProxy.mZoom = 0;
                 mCameraProxy.handleZoom(true, mCameraDevice, characteristics, previewRequestBuilder, mPreviewRequest, captureSession);
             }
@@ -950,9 +1003,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         //1:1
         option1.setOnClickListener(v -> {
             if (v.getId() == R.id.option1) {
+                capture.setEnabled(false);
                 mCameraProxy.mZoom = 0;
-                option2.setEnabled(true);
-                option3.setEnabled(true);
                 focusSunView.setVisibility(View.INVISIBLE);
                 option1.setTextColor(Color.YELLOW);
                 option2.setTextColor(Color.WHITE);
@@ -964,16 +1016,20 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 largest = new Size(1, 1);
                 saveCameraState(1, 1);
                 isOption = true;
+                option1.setEnabled(false);
+                option2.setEnabled(false);
+                option3.setEnabled(false);
                 switchCameraWithMaskAnimation();
+                mFlashMode=2;
+                SwichFlash();
             }
         });
 
         // 4:3
         option2.setOnClickListener(v -> {
             if (v.getId() == R.id.option2) {
-                option1.setEnabled(true);
+                capture.setEnabled(false);
                 option1.setTextColor(Color.WHITE);
-                option3.setEnabled(true);
                 option3.setTextColor(Color.WHITE);
                 option2.setTextColor(Color.YELLOW);
                 focusSunView.setVisibility(View.INVISIBLE);
@@ -984,16 +1040,20 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 largest = new Size(4, 3);
                 saveCameraState(4, 3);
                 isOption = true;
+                option1.setEnabled(false);
+                option2.setEnabled(false);
+                option3.setEnabled(false);
                 switchCameraWithMaskAnimation();
+                mFlashMode=2;
+                SwichFlash();
             }
         });
 
         // 16:9
         option3.setOnClickListener(v -> {
             if (v.getId() == R.id.option3) {
-                option1.setEnabled(true);
+                capture.setEnabled(false);
                 option1.setTextColor(Color.WHITE);
-                option2.setEnabled(true);
                 option2.setTextColor(Color.WHITE);
                 option3.setTextColor(Color.YELLOW);
                 focusSunView.setVisibility(View.INVISIBLE);
@@ -1004,15 +1064,18 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 saveCameraState(20, 9);
                 isCapture = true;
                 isOption = true;
+                option1.setEnabled(false);
+                option2.setEnabled(false);
+                option3.setEnabled(false);
                 switchCameraWithMaskAnimation();
+                mFlashMode=2;
+                SwichFlash();
             }
         });
         //480p
         option4.setOnClickListener(v -> {
             if (v.getId() == R.id.option4) {
                 mCameraProxy.mZoom = 0;
-                option4.setEnabled(false);
-                option5.setEnabled(true);
                 option5.setTextColor(Color.WHITE);
                 option4.setTextColor(Color.YELLOW);
                 focusSunView.setVisibility(View.INVISIBLE);
@@ -1022,6 +1085,9 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 isRecord4 = true;
                 isRecord5 = false;
                 isOption = true;
+                option4.setEnabled(false);
+                option5.setEnabled(false);
+                record.setEnabled(false);
                 switchCameraWithMaskAnimation();
             }
         });
@@ -1029,9 +1095,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         option5.setOnClickListener(v -> {
             if (v.getId() == R.id.option5) {
                 mCameraProxy.mZoom = 0;
-                option4.setEnabled(true);
                 option4.setTextColor(Color.WHITE);
-                option5.setEnabled(false);
                 option5.setTextColor(Color.YELLOW);
                 focusSunView.setVisibility(View.INVISIBLE);
                 void_quality.setText(option5.getText().toString());
@@ -1040,6 +1104,9 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 isRecord5 = true;
                 isRecord4 = false;
                 isOption = true;
+                option4.setEnabled(false);
+                option5.setEnabled(false);
+                record.setEnabled(false);
                 switchCameraWithMaskAnimation();
             }
         });
@@ -1082,49 +1149,6 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         Choose2.setVisibility(View.VISIBLE);
     }
 
-    /**
-     * 设置触摸监听器以捕捉特定的触摸事件
-     * 此方法主要用于为视图设置一个触摸事件监听器，以便在用户触摸屏幕时执行特定操作
-     */
-    @SuppressLint("ClickableViewAccessibility")
-    private void captureTouchListener() {
-        capture.setOnTouchListener(new View.OnTouchListener() {
-                                       private boolean isZooming = false; // 标记是否正在缩放
-
-                                       @Override
-                                       public boolean onTouch(View v, MotionEvent event) {
-                                           switch (event.getAction()) {
-                                               // 按下
-                                               case MotionEvent.ACTION_DOWN:
-                                                   capture.startAnimation(btnAnimation); //拍照按钮动画
-                                                   //动漫回调
-                                                   btnAnimation.setAnimationListener(new Animation.AnimationListener() {
-                                                       @Override
-                                                       public void onAnimationStart(Animation animation) {
-                                                           //  Toast.makeText(CameraActivity.this, "点击了拍照按钮", Toast.LENGTH_SHORT).show();
-                                                           capture.setEnabled(false);
-                                                           isCaptureingflg = true;
-                                                           //switchCameraWithMaskAnimation();
-                                                           Log.d("--1CameraActivity--", "123");
-                                                           takePicture();
-                                                           mMediaActionSound.play(MediaActionSound.SHUTTER_CLICK); // 播放拍照声音
-                                                       }
-
-                                                       @Override
-                                                       public void onAnimationEnd(Animation animation) {
-                                                       }
-
-                                                       @Override
-                                                       public void onAnimationRepeat(Animation animation) {
-
-                                                       }
-                                                   });
-                                           }
-                                           return false;
-                                       }
-                                   }
-        );
-    }
 
     /**
      * 切换界面布局的显示状态
@@ -1256,6 +1280,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         void_quality.setEnabled(true);
         mCustomViewL.setVisibility(View.VISIBLE);
         mCustomViewL.setEnabled(true);
+        option4.setEnabled(true);
+        option5.setEnabled(true);
         //isStopRecord=true;
         //switchCameraWithMaskAnimation();
         // 停止计时器
@@ -1372,6 +1398,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     private void switchCameraWithMaskAnimation() {
         // 确保没有正在进行的动画
         cancelCurrentAnimator();
+        mTextureViewAnimation.setAnimationListener(null);
         if (mCameraDevice != null && isLayoutSwich || isSwichCamera || isOption || isStopRecord || isCaptureingflg) {
             if (maskViewbuf != null && parentbuf != null) {
                 maskViewbuf.setAlpha(0f);
@@ -1384,10 +1411,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             int width = findViewById(R.id.container).getWidth();
             int height = findViewById(R.id.container).getHeight();
             Log.d("switchCameraWithMaskAnimation", "width:" + width + " height:" + height);
-
             // 获取 mTextureView 的父布局
             ViewGroup parent = (ViewGroup) mTextureView.getParent();
-
             // 设置蒙版视图的布局参数
             FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(width, height);
 
@@ -1396,9 +1421,9 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             // 添加动画效果
             ValueAnimator animator = ValueAnimator.ofFloat(0f, 1f);
             animator.setDuration(150); // 动画持续时间
-            if (isLayoutSwich) {
-                animator.setDuration(600); // 动画持续时间
-            }
+//            if (isLayoutSwich) {
+//                animator.setDuration(600); // 动画持续时间
+//            }
             animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
                 @Override
                 public void onAnimationUpdate(ValueAnimator animation) {
@@ -1483,7 +1508,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         };
 
         // 执行延迟任务
-        handler2.postDelayed(removeMaskRunnable, 800); // 延迟 870 毫秒
+        handler2.postDelayed(removeMaskRunnable, 650); // 延迟 870 毫秒
     }
 
     /**
@@ -1524,8 +1549,9 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 }
                 capture.setEnabled(true);
                 switch_camera.setEnabled(true);
-
                 mTextureView.setEnabled(true);
+                void_quality.setEnabled(true);
+                switch_frame.setEnabled(true);
             }
         };
 
@@ -1542,6 +1568,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
      */
     private void SwitchFrame(final View maskView) {
         openCamera(mTextureView.getWidth(), mTextureView.getHeight());
+       // initAutoFitTextureView(mTextureView, mTextureView.getWidth(), mTextureView.getHeight());
+       // startPreview();
         isOption = false;
         switch_camera.setEnabled(false);
         record.setEnabled(false);
@@ -1564,13 +1592,25 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 switch_camera.setEnabled(true);
                 mCustomViewL.setEnabled(true);
                 mPictureIv.setEnabled(true);
-                capture.setEnabled(true);
-                record.setEnabled(true);
+               // capture.setEnabled(true);
+               // record.setEnabled(true);
                 mCustomViewL.textViews.get(0).setEnabled(true);
                 mCustomViewL.textViews.get(1).setEnabled(true);
                 mTextureView.setEnabled(true);
+                option1.setEnabled(true);
+                option2.setEnabled(true);
+                option3.setEnabled(true);
+                option4.setEnabled(true);
+                option5.setEnabled(true);
+                switch_frame.setEnabled(true);
+                void_quality.setEnabled(true);
+                falsh_switch.setEnabled(true);
+                // 线程结束的回调
+                capture.setEnabled(true);
+                record.setEnabled(true);
             }
         };
+
 
         // 执行延迟任务
         handler2.postDelayed(removeMaskRunnable, 650); // 延迟 870 毫秒
@@ -1674,6 +1714,13 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             Log.d("--CameraActivity--", "rotation:" + rotation);
             // 根据设备方向计算设置照片的方向
             captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, rotation + 90);
+
+            handler2.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    mTextureView.startAnimation(bitmapAnimation);
+                }
+            }, 0);
             // 捕获一帧图像
             if (Strongflash) {
 
@@ -1693,6 +1740,9 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                                 public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull TotalCaptureResult result) {
                                     super.onCaptureCompleted(session, request, result);
                                     capture.setEnabled(true);
+                                    option1.setEnabled(true);
+                                    option2.setEnabled(true);
+                                    option3.setEnabled(true);
                                 }
                             }, null);
                         } catch (CameraAccessException e) {
@@ -1718,6 +1768,9 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                                 public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull TotalCaptureResult result) {
                                     super.onCaptureCompleted(session, request, result);
                                     capture.setEnabled(true);
+                                    option1.setEnabled(true);
+                                    option2.setEnabled(true);
+                                    option3.setEnabled(true);
                                 }
                             }, null);
                         } catch (CameraAccessException e) {
@@ -1738,9 +1791,13 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                     @Override
                     public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull TotalCaptureResult result) {
                         super.onCaptureCompleted(session, request, result);
+                        option1.setEnabled(true);
+                        option2.setEnabled(true);
+                        option3.setEnabled(true);
                         capture.setEnabled(true);
                     }
                 }, null);
+
             }
         } catch (CameraAccessException e) {
             e.printStackTrace();
@@ -1830,9 +1887,14 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         void_quality.setVisibility(View.GONE);
         falsh_switch.setVisibility(View.GONE);
         Choose2.setVisibility(View.GONE);
+        Choose2.setEnabled(false);
         Choose.setVisibility(View.GONE);
+        Choose.setEnabled(false);
         switch_camera.setEnabled(false);
         mCameraProxy.mZoom = 0;
+        void_quality.setEnabled(false);
+        switch_frame.setEnabled(false);
+        mTextureView.startAnimation(mTextureViewAnimation);
         mCameraProxy.handleZoom(true, mCameraDevice, characteristics, previewRequestBuilder, mPreviewRequest, captureSession);
         if (colorState == 1) {
             record.setEnabled(false);
@@ -1872,7 +1934,6 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             Title.setVisibility(View.VISIBLE);
             switch_frame.setVisibility(View.VISIBLE);
             falsh_switch.setVisibility(View.VISIBLE);
-            // previewSize=new Size(1280,720);
             Log.d("--CameraActivity2--", "Layout_Switch: " + isRecord4);
             isRecordflag = isRecord4;
             isRecord4 = false;
@@ -1881,6 +1942,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             isLayoutSwich = true;
             mFlashMode = 2;
             isLayout = false;
+            falsh_switch.setEnabled(true);
             SwichFlash();
             if (isLayoutSwich) {
                 switchCameraWithMaskAnimation();
@@ -1953,7 +2015,6 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
      * @param height 纹理视图的高度，用于调整视图大小
      */
     private void openCamera(int width, int height) {
-
         initAutoFitTextureView(mTextureView, mTextureView.getWidth(), mTextureView.getHeight());
         stopCaptureSessionAsync();
         //Toast.makeText(this, "打开摄像头", Toast.LENGTH_SHORT).show();
@@ -2415,8 +2476,11 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                         falsh_switch.setEnabled(true);
                         switch_camera.setEnabled(true);
                         Load.setEnabled(true);
+                        Choose.setEnabled(true);
+                        Choose2.setEnabled(true);
                         firstView = false;
                     }
+                    focusOnPoint((double) mTextureView.getWidth() / 2, (double) mTextureView.getHeight() / 2, mTextureView.getWidth(), mTextureView.getHeight());
                 }
 
 
@@ -2619,10 +2683,10 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         mMediaRecorder.setVideoFrameRate(30);
         // 根据相机预览尺寸设置视频分辨率
 
-        if (largest.getWidth() == 4) {
+        if (isRecord4) {
             mMediaRecorder.setVideoSize(1280, 960);
         } else {
-            mMediaRecorder.setVideoSize(1600, 720);
+            mMediaRecorder.setVideoSize(1280, 720);
         }
         // 设置视频编码格式为H.264，提供较好的压缩效率
         mMediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
@@ -2740,6 +2804,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         CaptureRequest.Builder focusRequestBuilder = null;
         try {
             focusRequestBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
+
         } catch (CameraAccessException e) {
             throw new RuntimeException(e);
         }
@@ -2752,7 +2817,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         if (isRecording) {
             focusRequestBuilder.addTarget(mMediaRecorder.getSurface());
         }
-
+        mCameraProxy.mZoom = 0;
+        mCameraProxy.handleZoom(true, mCameraDevice, characteristics, focusRequestBuilder, mPreviewRequest, captureSession);
         int previewWidth = previewSize.getWidth();
         int previewHeight = previewSize.getHeight();
 
