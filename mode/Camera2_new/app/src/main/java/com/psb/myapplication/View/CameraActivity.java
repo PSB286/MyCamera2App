@@ -315,8 +315,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        initScreen();                                                       //初始化布局
         initRequestPermissions();                                           // 申请摄像头权限
+        initScreen();                                                       //初始化布局
         initVariable();                                                     //初始化变量
         initCustomViewL();                                                  // 初始化自定义View
         initClickListener();                                                // 初始化点击监听器
@@ -502,7 +502,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         super.onResume();
         //initRequestPermissions();
         //Register the orientation sensor
-        sensorManager.registerListener(sensorEventListener, sensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION), SensorManager.SENSOR_DELAY_NORMAL);
+    //    sensorManager.registerListener(sensorEventListener, sensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION), SensorManager.SENSOR_DELAY_NORMAL);
         if (isClickBitmap) {
             Bitmap bitmap = getLatestThumbBitmap(this);
             myapp = this;
@@ -516,9 +516,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             isClickBitmap = false;
         }
         // 打开相机
-        if (mTextureView.isAvailable()) {
-            openCamera(mTextureView.getWidth(), mTextureView.getHeight());
-        } else {
+        if (!mTextureView.isAvailable()) {
             // Activity创建时，添加TextureView的监听，TextureView创建完成后就可以开启camera就行了
             mTextureView.setSurfaceTextureListener(mSurfaceTextureListener);
         }
@@ -543,12 +541,12 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             }
         } else {
             // 关闭camera，关闭后台线程
-            closeCamera();
+          //  closeCamera();
         }
         //stopBackgroundThread();
         super.onPause();
         // 注销监听器
-        sensorManager.unregisterListener(sensorEventListener);
+       // sensorManager.unregisterListener(sensorEventListener);
     }
 
     // 重写onStop方法
@@ -725,8 +723,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         LoadAnimation = AnimationUtils.loadAnimation(this, R.anim.dialog_loading);     // 加载加载动画
         recordTouchListener();                                                              // 录制按钮动画
        // captureTouchListener();                                                             // 拍照按钮动画
-        sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);                   // 获取传感器管理器
-        sensorManager.registerListener(sensorEventListener, sensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION), SensorManager.SENSOR_DELAY_NORMAL);
+      //  sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);                   // 获取传感器管理器
+       // sensorManager.registerListener(sensorEventListener, sensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION), SensorManager.SENSOR_DELAY_NORMAL);
         // 注册传感器监听器
     }
 
@@ -754,11 +752,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 // 摄像头权限
                 Manifest.permission.CAMERA,
                 // 录音权限
-                Manifest.permission.RECORD_AUDIO,
-                // 修改音频设置权限
-                Manifest.permission.RECORD_AUDIO,
-                // 修改音频设置权限
-                Manifest.permission.MODIFY_AUDIO_SETTINGS
+                Manifest.permission.RECORD_AUDIO
         }, 0x123);
     }
 
