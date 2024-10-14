@@ -1,13 +1,8 @@
 package com.psb.myapplication.View;
 
-import com.psb.myapplication.R;
-import com.psb.myapplication.Utils.ImageUtils;
-import com.psb.myapplication.Utils.Camera2Proxy;
-
 import static com.psb.myapplication.Utils.ImageUtils.getLatestThumbBitmap;
 import static com.psb.myapplication.Utils.ImageUtils.rotateBitmap;
 import static java.lang.Thread.sleep;
-import static java.security.AccessController.getContext;
 
 import android.Manifest;
 import android.animation.Animator;
@@ -63,6 +58,7 @@ import android.util.Log;
 import android.util.Size;
 import android.util.SparseIntArray;
 import android.view.GestureDetector;
+import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.Surface;
 import android.view.TextureView;
@@ -74,7 +70,6 @@ import android.view.animation.AnimationUtils;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.PopupWindow;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -84,10 +79,13 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.camera.core.CameraState;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+
+import com.psb.myapplication.R;
+import com.psb.myapplication.Utils.Camera2Proxy;
+import com.psb.myapplication.Utils.ImageUtils;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -173,6 +171,12 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     boolean Strongflash = false;// 强光
     boolean Autoflash = false;
     boolean firstView = true;
+    boolean isFlat = false;
+    boolean isPanning=false;
+    boolean isPanningflg = true;
+    float deltaX=0;
+    float startX=0;
+    float SWIPE_THRESHOLD=100;
     View maskView;                                                                  // 遮罩
     View maskViewbuf;                                                               // 遮罩
     ViewGroup parentbuf;                                                            // 父容器
@@ -326,7 +330,6 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     private void initTouchListener() {
         mTextureView.setOnTouchListener(new View.OnTouchListener() {
             private boolean isZooming = false; // 标记是否正在缩放
-
             @Override
             public boolean onTouch(View v, MotionEvent event) {
                 // 获取手指的数量
@@ -338,7 +341,6 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                         // 双指按下
                         isZooming = true;
                         mOldDistance = getFingerSpacing(event);
-                        // Toast.makeText(getApplicationContext(), "双指按下", Toast.LENGTH_SHORT).show();
                         // 隐藏聚焦图标
                         focusSunView.setVisibility(View.INVISIBLE);
                         break;
@@ -357,7 +359,6 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                             } else if (newDistance < mOldDistance) {
                                 if (previewRequestBuilder != null) {
                                     if (isRecordingflg) {
-
                                         mCameraProxy.handleZoom(false, mCameraDevice, characteristics, recordvideoRequestBuilder, mPreviewRequest, captureSession);
                                     } else {
                                         mCameraProxy.handleZoom(false, mCameraDevice, characteristics, previewRequestBuilder, mPreviewRequest, captureSession);
@@ -365,8 +366,32 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                                 }
                             }
                             mOldDistance = newDistance;
-                            //  Toast.makeText(getApplicationContext(), "双指移动", Toast.LENGTH_SHORT).show();
                         }
+//                        // 检查单指左右滑动
+//                        if (pointerCount == 1) {
+//                            if (!isPanning) {
+//                                startX = event.getX(); // 记录初始X坐标
+//                                isPanning = true;
+//                                Log.d("--CameraActivity2--", "单指滑动");
+//                            } else {
+//                                float deltaX = event.getX() - startX;
+//                                Log.d("--CameraActivity2--", "单指滑动距离不够");
+//                                if (Math.abs(deltaX) > SWIPE_THRESHOLD) { // SWIPE_THRESHOLD为设定的滑动阈值
+//                                    isPanningflg=false;
+//                                    if (deltaX > 0) {
+//                                        // 隐藏聚焦图标
+//                                        focusSunView.setVisibility(View.GONE);
+//                                        Log.d("--CameraActivity2--", "右滑");
+//                                        mCustomViewL.scrollRight();
+//                                    } else {
+//                                        focusSunView.setVisibility(View.GONE);
+//                                        Log.d("--CameraActivity2--", "左滑");
+//                                        mCustomViewL.scrollLeft();
+//                                    }
+//                                    isPanning = false; // 结束滑动
+//                                }
+//                            }
+//                        }
                         break;
                     case MotionEvent.ACTION_POINTER_UP:
                         // 双指抬起
@@ -380,20 +405,20 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 // 单指点击对焦
                 switch (event.getAction() & MotionEvent.ACTION_MASK) {
                     case MotionEvent.ACTION_DOWN:
-
+                        break;
+                    case MotionEvent.ACTION_UP:
+                        // 单指抬起
+                        Log.d("--CameraActivity2--", "单指按下"+isPanning);
                         // 单指按下
-                        if (!isZooming && pointerCount == 1&& Objects.equals(cameraId, "0")) {
+                        if (!isZooming && pointerCount == 1 && Objects.equals(cameraId, "0")&&isPanningflg) {
                             // 点击对焦
-                            // Toast.makeText(getApplicationContext(), "单指按下", Toast.LENGTH_SHORT).show();
                             if (previewRequestBuilder != null) {
                                 if (colorState == 1 && isRecordingflg) {
-                                    // mCameraProxy.handleZoom(false, mCameraDevice, characteristics, recordvideoRequestBuilder, mPreviewRequest, captureSession);
                                     focusOnPoint((int) event.getX(), (int) event.getY(), mTextureView.getWidth(), mTextureView.getHeight());
                                 } else {
                                     focusOnPoint((int) event.getX(), (int) event.getY(), mTextureView.getWidth(), mTextureView.getHeight());
                                 }
                             }
-                            // triggerFocusAtPoint(event.getX(), event.getY(), previewSize.getWidth(), previewSize.getHeight());
                             focusSunView.setVisibility(View.VISIBLE);
                             // 设置焦点位置
                             float halfWidth = focusSunView.getWidth() / 2f;
@@ -417,13 +442,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                             // 开始倒计时
                             focusSunView.startCountdown(true);
                         }
-                        break;
-
-                    case MotionEvent.ACTION_UP:
-                        // 单指抬起
                         // 不执行任何操作
                         break;
-
                     default:
                         break;
                 }
@@ -433,6 +453,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             }
         });
     }
+
 
     /**
      * 开始相机预览
@@ -479,6 +500,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     @Override
     public void onResume() {
         super.onResume();
+        //initRequestPermissions();
         //Register the orientation sensor
         sensorManager.registerListener(sensorEventListener, sensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION), SensorManager.SENSOR_DELAY_NORMAL);
         if (isClickBitmap) {
@@ -525,6 +547,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         }
         //stopBackgroundThread();
         super.onPause();
+        // 注销监听器
         sensorManager.unregisterListener(sensorEventListener);
     }
 
@@ -660,6 +683,13 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         screenWidth = mDisplayMetrics.widthPixels;
         screenHeight = mDisplayMetrics.heightPixels;
         Log.d("--Screen--", "width:" + screenWidth + " height:" + screenHeight);
+        int proportion = (int) ((float) screenWidth / screenHeight * 100);
+        Log.d("-123-", "123:" + proportion);
+        if (proportion < 50) {
+            isFlat = false;
+        } else {
+            isFlat= true;
+        }
 
 
         surfaces = new ArrayList<>();                                       // 用于存储Surface
@@ -898,9 +928,12 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                     @Override
                     public void onAnimationStart(Animation animation) {
                         mCameraProxy.mZoom = 0;
-                        cameraId = "1".equals(cameraId) ? "0" : "1";
-                        // 切换摄像头
-                        closeCamera();
+                        if (isSwichCamera) {
+                            cameraId = "1".equals(cameraId) ? "0" : "1";
+                            // 切换摄像头
+                            closeCamera();
+                            isSwichCamera = false;
+                        }
                         openCamera(mTextureView.getWidth(), mTextureView.getHeight());
                         mTextureView.setEnabled(false);
                         // 关闭对焦
@@ -918,6 +951,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                         capture.setEnabled(true);
                         mFlashMode=lastFlashMode;
                         SwichFlash();
+                        //  mTextureView.startAnimation(mTextureViewAnimation);
                     }
 
                     @Override
@@ -1518,6 +1552,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
      * @param maskView 用于遮罩的视图，在摄像头切换后将被移除
      */
     private void Swichlayout(final View maskView) {
+        isPanningflg=false;
         openCamera(mTextureView.getWidth(), mTextureView.getHeight());
         if (isLayout) {
             mCustomViewL.textViews.get(0).setEnabled(false);
@@ -1552,6 +1587,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 mTextureView.setEnabled(true);
                 void_quality.setEnabled(true);
                 switch_frame.setEnabled(true);
+                isPanningflg=true;
             }
         };
 
@@ -2198,6 +2234,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             // 获取 FrameLayout.LayoutParams
             FrameLayout.LayoutParams layoutParams = (FrameLayout.LayoutParams) mTextureView.getLayoutParams();
             Log.d("--Position_frame--", "4/3");
+            //取消居中
+            layoutParams.gravity = Gravity.NO_GRAVITY;
             // 设置 topMargin 为 100dp
             layoutParams.topMargin = (int) (100 * getResources().getDisplayMetrics().density);
 
@@ -2207,6 +2245,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             Log.d("--Position_frame--", "1");
             // 获取 FrameLayout.LayoutParams
             FrameLayout.LayoutParams layoutParams = (FrameLayout.LayoutParams) mTextureView.getLayoutParams();
+            //取消居中
+            layoutParams.gravity = Gravity.NO_GRAVITY;
             // 设置 topMargin 为 100dp
             layoutParams.topMargin = (int) (160 * getResources().getDisplayMetrics().density);
 
@@ -2216,9 +2256,22 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             Log.d("--Position_frame--", "1600/720");
             // 获取 FrameLayout.LayoutParams
             FrameLayout.LayoutParams layoutParams = (FrameLayout.LayoutParams) mTextureView.getLayoutParams();
+            //取消居中
+            layoutParams.gravity = Gravity.NO_GRAVITY;
+            // 设置 topMargin 为 100dp
+            layoutParams.topMargin = (int) (0 * getResources().getDisplayMetrics().density);
+
+            // 应用新的 LayoutParams
+            mTextureView.setLayoutParams(layoutParams);
+        }
+        if(isFlat&&isRecord5)
+        {
+            FrameLayout.LayoutParams layoutParams = (FrameLayout.LayoutParams) mTextureView.getLayoutParams();
 
             // 设置 topMargin 为 100dp
             layoutParams.topMargin = (int) (0 * getResources().getDisplayMetrics().density);
+            //居中
+            layoutParams.gravity = Gravity.CENTER;
 
             // 应用新的 LayoutParams
             mTextureView.setLayoutParams(layoutParams);
