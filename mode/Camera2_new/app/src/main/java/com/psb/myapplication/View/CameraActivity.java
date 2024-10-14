@@ -143,6 +143,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     File previousFile = null;                                                       // 录制视频文件
     private int seconds = 0;                                                        // 录制时间
     int colorState = 0;                                                               // 颜色状态
+    Surface previewSurface=null;
     Runnable runnable;                                                              // 录制视频
     private short mFlashMode = 3;                                                   // 闪光灯状态
     private short lastFlashMode = 2;
@@ -723,9 +724,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         LoadAnimation = AnimationUtils.loadAnimation(this, R.anim.dialog_loading);     // 加载加载动画
         recordTouchListener();                                                              // 录制按钮动画
        // captureTouchListener();                                                             // 拍照按钮动画
-      //  sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);                   // 获取传感器管理器
-       // sensorManager.registerListener(sensorEventListener, sensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION), SensorManager.SENSOR_DELAY_NORMAL);
-        // 注册传感器监听器
+        sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);                   // 获取传感器管理器
+        sensorManager.registerListener(sensorEventListener, sensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION), SensorManager.SENSOR_DELAY_NORMAL);
     }
 
     // 初始化自定义View
@@ -843,12 +843,11 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                     Title.setVisibility(View.VISIBLE);
 
                     //延迟500ms执行播放录像声音
-                    handler2.postDelayed(() -> {
-                        startRecordingVideo();
-                    }, 500);
+                    handler2.postDelayed(this::startRecordingVideo, 500);
                     mMediaActionSound.play(MediaActionSound.START_VIDEO_RECORDING);
                 } else {
                     try {
+                        mTextureView.setEnabled(false);
                         // isStopRecord=true;
                         // switchCameraWithMaskAnimation();
                         stopRecordingVideo();
@@ -876,6 +875,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                     } catch (CameraAccessException e) {
                         throw new RuntimeException(e);
                     }
+                   // mTextureView.setEnabled(true);
                 }
             }
         });
@@ -885,6 +885,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             if (v.getId() == R.id.switch_camera) {
                 switch_camera.setEnabled(false);
                 switch_camera.startAnimation(btnAnimation);
+                mCameraProxy.mZoom = 0;
                 //动画结束回调
                 btnAnimation.setAnimationListener(new Animation.AnimationListener() {
                     @Override
@@ -1282,6 +1283,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         try {
             mMediaRecorder.stop();
         } catch (IllegalStateException e) {
+            Log.d("MediaRecorder", "stopRecordingVideo");
             e.printStackTrace();
         } finally {
             mMediaRecorder.reset();
@@ -1341,10 +1343,6 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         recordvideoRequestBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_RECORD);
         // 将MediaRecorder的Surface添加到请求中
         recordvideoRequestBuilder.addTarget(mMediaRecorder.getSurface());
-        // 创建一个预览Surface
-        texture.setDefaultBufferSize(previewSize.getWidth(), previewSize.getHeight());
-        // 创建一个Surface
-        Surface previewSurface = new Surface(texture);
         // 设置预览请求的输出Surface
         Rect zoomRect = previewRequestBuilder.get(CaptureRequest.SCALER_CROP_REGION);
         // 设置预览输出的Surface
@@ -1354,10 +1352,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         }
         // 将预览Surface添加到预览请求中
         recordvideoRequestBuilder.addTarget(previewSurface); // 保留预览Surface
-        //保留之前的曝光
-        recordvideoRequestBuilder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, previewRequestBuilder.get(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION));
-        // 设置自动对焦和自动曝光模式
-        recordvideoRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_VIDEO);
+        // 设置自动白平衡
+        recordvideoRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
         // 设置自动曝光模式
         recordvideoRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
         // 设置闪光灯模式为关闭
@@ -1377,7 +1373,6 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             startRecordingVideoinit();
             mMediaRecorder.start();
             isRecording = true;
-
             // 启动计时器
             new Thread(new Runnable() {
                 @Override
@@ -2445,7 +2440,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         assert texture != null;
 
         texture.setDefaultBufferSize(previewSize.getWidth(), previewSize.getHeight());
-        Surface previewSurface = new Surface(texture);
+        previewSurface = new Surface(texture);
         surfaces.add(previewSurface);
 
         // 创建ImageReader对象(拍照)
@@ -2527,6 +2522,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                         Choose2.setEnabled(true);
                         firstView = false;
                     }
+                    mTextureView.setEnabled(true);
                     focusOnPoint((double) mTextureView.getWidth() / 2, (double) mTextureView.getHeight() / 2, mTextureView.getWidth(), mTextureView.getHeight());
                 }
 
@@ -2782,7 +2778,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
     // 设置曝光度
     private void applyExposure(float exposure) {
-        exposure = 100 * (exposure / 9950) - 40;
+        exposure = 500 * (exposure / 9950) - 40;
         Log.d("applyExposure", "applyExposure: " + exposure);
         if (colorState == 1 && isRecordingflg) {
             try {
@@ -2864,7 +2860,6 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         if (isRecording) {
             focusRequestBuilder.addTarget(mMediaRecorder.getSurface());
         }
-        mCameraProxy.mZoom = 0;
         mCameraProxy.handleZoom(true, mCameraDevice, characteristics, focusRequestBuilder, mPreviewRequest, captureSession);
         int previewWidth = previewSize.getWidth();
         int previewHeight = previewSize.getHeight();
@@ -2914,7 +2909,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                     // 恢复对焦模式
                     finalFocusRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_CANCEL);
                     mPreviewRequest = finalFocusRequestBuilder.build();
-                    startPreview();
+                  //  startPreview();
                 }
             }, null);
         } catch (CameraAccessException e) {
