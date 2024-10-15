@@ -1,5 +1,7 @@
 package com.psb.myapplication.View;
 
+import static com.psb.myapplication.View.CameraActivity.mCustomViewL;
+
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
@@ -153,6 +155,7 @@ public class FocusSunView extends View {
         if (countdown == null) {
             if (!reset) {
                 countdown = new CountDownTimer(2000, 1000) { // 将倒计时总时长改为2000毫秒
+                   // 倒计时开始时，将动画颜色设置为半透明
                     @Override
                     public void onTick(long millisUntilFinished) {
                         if (millisUntilFinished >= 1000 && millisUntilFinished <= 1500) {
@@ -161,6 +164,7 @@ public class FocusSunView extends View {
                         }
                     }
 
+                    // 倒计时结束时，将动画颜色设置为白色，并设置控件为GONE
                     @Override
                     public void onFinish() {
                         countdown = null;
@@ -171,6 +175,7 @@ public class FocusSunView extends View {
                 focusAnimator = ValueAnimator.ofFloat(0f, 1.3f, 1f).setDuration(200); // 将动画时长改为200毫秒
                 if (focusAnimator != null) {
                     focusAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                       // 动画更新时，更新帧矩形的位置
                         @Override
                         public void onAnimationUpdate(ValueAnimator animation) {
                             float value = (float) animation.getAnimatedValue();
@@ -185,6 +190,7 @@ public class FocusSunView extends View {
                             postInvalidate();
                         }
                     });
+                    // 动画结束时，将动画颜色设置为白色，并设置控件为GONE
                     focusAnimator.addListener(new AnimatorListenerAdapter() {
                         @Override
                         public void onAnimationEnd(Animator animation) {
@@ -326,13 +332,27 @@ public class FocusSunView extends View {
                 case MotionEvent.ACTION_DOWN:
                     if (circleY < 0f) {
                         circleY = getHeight() * progress;
-                        lastCircleY = circleY;
+                        lastCircleY = circl adbeY;
                     }
                     posY = event.getY();
                     paintColor = Color.WHITE;
                     break;
                     // 移动
                 case MotionEvent.ACTION_MOVE:
+                    CameraActivity.capture.setEnabled(false);
+                    CameraActivity.record.setEnabled(false);
+                    CameraActivity.Title.setEnabled(false);
+
+                    CameraActivity.switch_frame.setEnabled(false);
+                    CameraActivity.void_quality.setEnabled(false);
+                    CameraActivity.option1.setEnabled(false);
+                    CameraActivity.option2.setEnabled(false);
+                    CameraActivity.option3.setEnabled(false);
+                    CameraActivity.option4.setEnabled(false);
+                    CameraActivity.option5.setEnabled(false);
+
+                    CameraActivity.switch_camera.setEnabled(false);
+                    CameraActivity.mCustomViewL.setEnabled(false);
                     curPosY = event.getY();
                     paintColor = Color.WHITE;
                     if ((curPosY - posY != 0)) {
@@ -366,6 +386,18 @@ public class FocusSunView extends View {
                     }
                     break;
                 case MotionEvent.ACTION_UP:
+                    CameraActivity.capture.setEnabled(true);
+                    CameraActivity.record.setEnabled(true);
+                    CameraActivity.Title.setEnabled(true);
+                    CameraActivity.switch_camera.setEnabled(true);
+                    CameraActivity.mCustomViewL.setEnabled(true);
+                    CameraActivity.switch_frame.setEnabled(true);
+                    CameraActivity.void_quality.setEnabled(true);
+                    CameraActivity.option1.setEnabled(true);
+                    CameraActivity.option2.setEnabled(true);
+                    CameraActivity.option3.setEnabled(true);
+                    CameraActivity.option4.setEnabled(true);
+                    CameraActivity.option5.setEnabled(true);
                 case MotionEvent.ACTION_CANCEL:
                     lastCircleY = circleY;
                     showLine = false;
@@ -392,6 +424,12 @@ public class FocusSunView extends View {
     // 监听器
     public interface OnExposureChangeListener {
         void onExposureChangeListener(float exposure);
+
+        //当焦点光圈开始聚焦时调用
+        void onFocusStart();
+
+        //当停止调用时
+        void onFocusEnd();
     }
 
     // dp转px
