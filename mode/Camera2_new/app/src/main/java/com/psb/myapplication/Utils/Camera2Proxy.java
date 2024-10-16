@@ -49,6 +49,7 @@ public class Camera2Proxy {
     private int mDisplayRotate = 0;                                  // 屏幕方向
     private int mDeviceOrientation = 0;                              // 设备方向，由相机传感器获取
     public int mZoom = 0;                                                   // 缩放
+    Rect zoomRect;
 
 
     // 构造函数
@@ -119,7 +120,7 @@ public class Camera2Proxy {
      * @param PreviewRequest 预览请求对象
      * @param mCaptureSession 相机捕获会话，用于管理相机捕获操作
      */
-    public void handleZoom(boolean isZoomIn,CameraDevice CameraDevice,CameraCharacteristics CameraCharacteristics,CaptureRequest.Builder PreviewRequestBuilder,CaptureRequest PreviewRequest,CameraCaptureSession mCaptureSession) {
+    public void handleZoom(boolean isZoomIn,boolean isFocus,CameraDevice CameraDevice,CameraCharacteristics CameraCharacteristics,CaptureRequest.Builder PreviewRequestBuilder,CaptureRequest PreviewRequest,CameraCaptureSession mCaptureSession) {
         mCameraDevice=CameraDevice;
         mCameraCharacteristics=CameraCharacteristics;
         mPreviewRequestBuilder=PreviewRequestBuilder;
@@ -129,31 +130,32 @@ public class Camera2Proxy {
            Log.v("--Zoom--","mCameraDevice:"+mCameraDevice+" mCameraCharacteristics:"+mCameraCharacteristics+" mPreviewRequestBuilder:"+mPreviewRequestBuilder);
             return;
         }
-
-        // maxZoom 表示 active_rect 宽度除以 crop_rect 宽度的最大值
-        float maxZoom = mCameraCharacteristics.get(android.hardware.camera2.CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM);
-        Log.d("--Zoom--", "handleZoom: maxZoom: " + maxZoom);
-        int factor = 100; // 放大/缩小的一个因素，设置越大越平滑，相应放大的速度也越慢
-        if (isZoomIn && mZoom < factor) {
-            mZoom++;
-        } else if (mZoom > 0) {
-            mZoom--;
+        if(!isFocus) {
+            // maxZoom 表示 active_rect 宽度除以 crop_rect 宽度的最大值
+            float maxZoom = mCameraCharacteristics.get(android.hardware.camera2.CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM);
+            Log.d("--Zoom--", "handleZoom: maxZoom: " + maxZoom);
+            int factor = 100; // 放大/缩小的一个因素，设置越大越平滑，相应放大的速度也越慢
+            if (isZoomIn && mZoom < factor) {
+                mZoom++;
+            } else if (mZoom > 0) {
+                mZoom--;
+            }
+            Log.d("--Zoom--", "handleZoom: mZoom: " + mZoom);
+            // 计算出 crop_rect
+            Rect rect = mCameraCharacteristics.get(android.hardware.camera2.CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE);
+            // 计算出 crop_rect 的最小值
+            int minW = (int) ((rect.width() - rect.width() / maxZoom) / (2 * factor));
+            // 计算出 crop_rect 的最大值
+            int minH = (int) ((rect.height() - rect.height() / maxZoom) / (2 * factor));
+            // 计算出 crop_rect 的放大缩小值
+            int cropW = minW * mZoom;
+            // 计算出 crop_rect 的放大缩小值
+            int cropH = minH * mZoom;
+            // 计算出 crop_rect
+            Log.d(TAG, "handleZoom: cropW: " + cropW + ", cropH: " + cropH);
+            // 计算出 crop_rect
+            zoomRect = new Rect(rect.left + cropW, rect.top + cropH, rect.right - cropW, rect.bottom - cropH);
         }
-        Log.d("--Zoom--", "handleZoom: mZoom: " + mZoom);
-        // 计算出 crop_rect
-        Rect rect = mCameraCharacteristics.get(android.hardware.camera2.CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE);
-        // 计算出 crop_rect 的最小值
-        int minW = (int) ((rect.width() - rect.width() / maxZoom) / (2 * factor));
-        // 计算出 crop_rect 的最大值
-        int minH = (int) ((rect.height() - rect.height() / maxZoom) / (2 * factor));
-        // 计算出 crop_rect 的放大缩小值
-        int cropW = minW * mZoom;
-        // 计算出 crop_rect 的放大缩小值
-        int cropH = minH * mZoom;
-        // 计算出 crop_rect
-        Log.d(TAG, "handleZoom: cropW: " + cropW + ", cropH: " + cropH);
-        // 计算出 crop_rect
-        Rect zoomRect = new Rect(rect.left + cropW, rect.top + cropH, rect.right - cropW, rect.bottom - cropH);
         // 设置 crop_rect
         mPreviewRequestBuilder.set(CaptureRequest.SCALER_CROP_REGION, zoomRect);
         // 提交设置
