@@ -1020,6 +1020,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                         option1.setEnabled(false);
                         option2.setEnabled(false);
                         option3.setEnabled(false);
+                        switch_camera.setEnabled(false);
                         Log.d("--1CameraActivity--", "123");
                         takePicture();
                         mMediaActionSound.play(MediaActionSound.SHUTTER_CLICK); // 播放拍照声音
@@ -1939,6 +1940,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                                     option1.setEnabled(true);
                                     option2.setEnabled(true);
                                     option3.setEnabled(true);
+                                    switch_camera.setEnabled(true);
                                 }
                             }, null);
                         } catch (CameraAccessException e) {
@@ -1967,6 +1969,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                                     option1.setEnabled(true);
                                     option2.setEnabled(true);
                                     option3.setEnabled(true);
+                                    switch_camera.setEnabled(true);
                                 }
                             }, null);
                         } catch (CameraAccessException e) {
@@ -1991,6 +1994,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                         option2.setEnabled(true);
                         option3.setEnabled(true);
                         capture.setEnabled(true);
+                        switch_camera.setEnabled(true);
                     }
                 }, null);
 
