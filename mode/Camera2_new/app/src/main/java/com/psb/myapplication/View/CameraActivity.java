@@ -557,6 +557,9 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 mPictureIv.setEnabled(true);
             }
             isClickBitmap = false;
+            mCameraProxy.mZoom=0;
+            mCameraProxy.handleZoom(true,false,mCameraDevice, characteristics, previewRequestBuilder, mPreviewRequest, captureSession);
+            mCameraProxy.handleZoom(true,false,mCameraDevice, characteristics, recordvideoRequestBuilder, mPreviewRequest, captureSession);
         }
         // 打开相机
         if (!mTextureView.isAvailable()) {
