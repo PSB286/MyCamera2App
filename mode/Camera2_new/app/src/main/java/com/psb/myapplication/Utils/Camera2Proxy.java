@@ -134,7 +134,7 @@ public class Camera2Proxy {
             // maxZoom 表示 active_rect 宽度除以 crop_rect 宽度的最大值
             float maxZoom = mCameraCharacteristics.get(android.hardware.camera2.CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM);
             Log.d("--Zoom--", "handleZoom: maxZoom: " + maxZoom);
-            int factor = 100; // 放大/缩小的一个因素，设置越大越平滑，相应放大的速度也越慢
+            int factor =50; // 放大/缩小的一个因素，设置越大越平滑，相应放大的速度也越慢
             if (isZoomIn && mZoom < factor) {
                 mZoom++;
             } else if (mZoom > 0) {

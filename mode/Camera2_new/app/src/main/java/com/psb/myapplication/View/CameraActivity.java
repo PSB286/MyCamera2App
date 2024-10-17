@@ -180,7 +180,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
     boolean isPanningflg = true;
     float deltaX=0;
     float startX=0;
-    float SWIPE_THRESHOLD=100;
+    float SWIPE_THRESHOLD=300;
     View maskView;                                                                  // 遮罩
     View maskViewbuf;                                                               // 遮罩
     ViewGroup parentbuf;                                                            // 父容器
@@ -404,6 +404,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                                 @Override
                                 public void run() {
                                     isZooming = false;
+                                    isPanningflg = true;
                                 }
                             }, 200); // 延迟 200 毫秒
                             // 显示聚焦图标
@@ -418,7 +419,12 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                         case MotionEvent.ACTION_DOWN:
                             startX = event.getX();
                             float startY = event.getY();
-                            isPanning = true;
+                            handler.postDelayed(new Runnable() {
+                                @Override
+                                public void run() {
+                                    isPanning = true; // 结束滑动
+                                }
+                            }, 200); // 延迟 200 毫秒
                             Log.d("--CameraActivity2--", "单指按下");
                             break;
                         case MotionEvent.ACTION_MOVE:
@@ -436,7 +442,12 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                                         Log.d("--CameraActivity2--", "左滑");
                                         mCustomViewL.scrollLeft();
                                     }
-                                    isPanning = false; // 结束滑动
+                                    handler.postDelayed(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            isPanning = false; // 结束滑动
+                                        }
+                                    }, 200); // 延迟 200 毫秒
                                 }
                             }
                             break;
@@ -578,6 +589,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         } else {
             // 关闭camera，关闭后台线程
           //  closeCamera();
+            mPictureIv.setImageBitmap(getLatestThumbBitmap(this));
         }
         //stopBackgroundThread();
         super.onPause();
@@ -1030,8 +1042,6 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
                 SwichFrame();
                 switch_frame.setEnabled(false);
                 falsh_switch.setEnabled(false);
-                mCameraProxy.mZoom = 0;
-                mCameraProxy.handleZoom(true,false,mCameraDevice, characteristics, previewRequestBuilder, mPreviewRequest, captureSession);
             }
         });
 
@@ -1040,8 +1050,6 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             if (v.getId() == R.id.void_quality) {
                 SwichQuality();
                 void_quality.setEnabled(false);
-                mCameraProxy.mZoom = 0;
-                mCameraProxy.handleZoom(true,false,mCameraDevice, characteristics, previewRequestBuilder, mPreviewRequest, captureSession);
             }
         });
 
@@ -2086,6 +2094,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         record.setEnabled(false);
         mTextureView.startAnimation(mTextureViewAnimation);
         mCameraProxy.handleZoom(true,false ,mCameraDevice,characteristics, previewRequestBuilder, mPreviewRequest, captureSession);
+
         if (colorState == 1) {
             record.setEnabled(false);
             record.setVisibility(View.VISIBLE);
@@ -2134,6 +2143,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             isLayout = false;
             falsh_switch.setEnabled(true);
             SwichFlash();
+            mCameraProxy.mZoom = 0;
+            mCameraProxy.handleZoom(false, false, mCameraDevice, characteristics, recordvideoRequestBuilder, mPreviewRequest, captureSession);
             if (isLayoutSwich) {
                 switchCameraWithMaskAnimation();
             }
@@ -2329,7 +2340,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
         // 定义一个容差值，允许一定的误差
         double tolerance = 0.05; // 可以根据需求调整
-
+        boolean flg=true;
         for (Size size : outputSizes) {
             double width = size.getWidth();
             double height = size.getHeight();
@@ -2338,6 +2349,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             // 判断当前尺寸的宽高比是否接近目标宽高比
             if (Math.abs(currentAspectRatio - targetAspectRatio) <= tolerance) {
                 filteredSizes.add(size);
+                Log.d("--filterSizesByAspectRatio--", "size:" + size+" targetAspectRatio:"+targetAspectRatio);
             }
         }
 
@@ -2407,7 +2419,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
 
             // 应用新的 LayoutParams
             mTextureView.setLayoutParams(layoutParams);
-        } else {
+        } else
+        {
             Log.d("--Position_frame--", "1600/720");
             // 获取 FrameLayout.LayoutParams
             FrameLayout.LayoutParams layoutParams = (FrameLayout.LayoutParams) mTextureView.getLayoutParams();
@@ -2419,7 +2432,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
             // 应用新的 LayoutParams
             mTextureView.setLayoutParams(layoutParams);
         }
-        if(isFlat&&isRecord5)
+        if(isFlat&&(isRecord5||isRecord4))
         {
             FrameLayout.LayoutParams layoutParams = (FrameLayout.LayoutParams) mTextureView.getLayoutParams();
 
@@ -2912,7 +2925,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         // 根据相机预览尺寸设置视频分辨率
 
         if (isRecord4) {
-            mMediaRecorder.setVideoSize(1280, 960);
+            mMediaRecorder.setVideoSize(720, 480);
         } else {
             mMediaRecorder.setVideoSize(1280, 720);
         }
@@ -2957,30 +2970,36 @@ public class CameraActivity extends AppCompatActivity implements View.OnTouchLis
         if (isFrontCamera()) {
             rotation = (rotation + 180) % 360;
         }
-
         return rotation;
     }
 
     // 设置曝光度
     private void applyExposure(float exposure) {
         exposure = 500 * (exposure / 9950) - 40;
-        Log.d("applyExposure", "applyExposure: " + exposure);
-        if (colorState == 1 && isRecordingflg) {
-            try {
-                focusRequestBuilder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, (int) exposure);
-                captureSession.setRepeatingRequest(focusRequestBuilder.build(), null, null);
-            } catch (CameraAccessException e) {
-                e.printStackTrace();
+        float finalExposure = exposure;
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                Log.d("applyExposure", "applyExposure: " + finalExposure);
+                if (colorState == 1 && isRecordingflg) {
+                    try {
+                        focusRequestBuilder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, (int) finalExposure);
+                        captureSession.setRepeatingRequest(focusRequestBuilder.build(), null, null);
+                    } catch (CameraAccessException e) {
+                        e.printStackTrace();
+                    }
+                } else {
+                    previewRequestBuilder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, (int) finalExposure);
+                    try {
+                        previewRequestBuilder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, (int) finalExposure);
+                        captureSession.setRepeatingRequest(previewRequestBuilder.build(), null, null);
+                    } catch (CameraAccessException e) {
+                        e.printStackTrace();
+                    }
+                }
             }
-        } else {
-            previewRequestBuilder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, (int) exposure);
-            try {
-                previewRequestBuilder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, (int) exposure);
-                captureSession.setRepeatingRequest(previewRequestBuilder.build(), null, null);
-            } catch (CameraAccessException e) {
-                e.printStackTrace();
-            }
-        }
+        }, 200); // 延迟 200 毫秒
+
     }
 
     public void saveCameraState(int width, int height) {
